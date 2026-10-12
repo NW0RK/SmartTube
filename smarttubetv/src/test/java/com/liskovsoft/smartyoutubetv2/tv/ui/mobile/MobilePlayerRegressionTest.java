@@ -1,0 +1,173 @@
+package com.liskovsoft.smartyoutubetv2.tv.ui.mobile;
+
+import static org.junit.Assert.*;
+
+import android.app.Application;
+import android.content.Context;
+import android.util.Pair;
+import android.view.ContextThemeWrapper;
+import android.view.LayoutInflater;
+import android.view.View;
+
+import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.RendererCapabilities;
+import com.google.android.exoplayer2.source.TrackGroup;
+import com.google.android.exoplayer2.source.TrackGroupArray;
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
+import com.google.android.exoplayer2.trackselection.TrackSelection.Definition;
+import com.liskovsoft.smartyoutubetv2.common.exoplayer.versions.selector.RestoreTrackSelector;
+import com.liskovsoft.smartyoutubetv2.tv.R;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
+
+import java.lang.reflect.Proxy;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 28, application = Application.class)
+public class MobilePlayerRegressionTest {
+    @Test
+    public void defaultZoomKeepsVideoFullSizeAndExplicitZoomAndFlipStillWork() {
+        Context context =
+                new ContextThemeWrapper(
+                        RuntimeEnvironment.getApplication(),
+                        android.R.style.Theme_Material_NoActionBar);
+        View stage = LayoutInflater.from(context).inflate(R.layout.mobile_player_stage, null);
+        MobilePlaybackFragment fragment = new MobilePlaybackFragment();
+        fragment.surface = stage.findViewById(R.id.mobile_player_surface);
+        View video = fragment.surface.getVideoSurfaceView();
+        assertNotNull(video);
+        fragment.setZoomPercents(-1);
+        assertEquals(1f, video.getScaleX(), 0f);
+        assertEquals(1f, video.getScaleY(), 0f);
+        fragment.setZoomPercents(150);
+        assertEquals(1.5f, video.getScaleX(), 0f);
+        fragment.setVideoFlipEnabled(true);
+        assertEquals(-1.5f, video.getScaleX(), 0f);
+        fragment.setZoomPercents(-1);
+        assertEquals(-1f, video.getScaleX(), 0f);
+        assertEquals(1f, video.getScaleY(), 0f);
+    }
+
+    @Test
+    public void destroyedPlayerIsDetachedBeforeAnotherVideoOpens() {
+        MobilePlaybackFragment fragment = new MobilePlaybackFragment();
+        fragment.mPlaybackPresenter =
+                com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(
+                        RuntimeEnvironment.getApplication());
+        fragment.mPlaybackPresenter.setView(fragment);
+        assertSame(fragment, fragment.mPlaybackPresenter.getPlayer());
+        // Simulates teardown after the Activity is finishing: getView() already returns null.
+        assertNull(fragment.mPlaybackPresenter.getView());
+        fragment.onDestroy();
+        assertNull(fragment.mPlaybackPresenter.getPlayer());
+    }
+
+    @Test
+    public void oldPlayerTeardownDoesNotDetachReplacementPlayer() {
+        MobilePlaybackFragment old = new MobilePlaybackFragment(),
+                replacement = new MobilePlaybackFragment();
+        old.mPlaybackPresenter =
+                com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(
+                        RuntimeEnvironment.getApplication());
+        old.mPlaybackPresenter.setView(replacement);
+        old.onDestroy();
+        assertSame(replacement, old.mPlaybackPresenter.getPlayer());
+        old.mPlaybackPresenter.setView(null);
+    }
+
+    @Test
+    public void lateChannelIconUpdateDoesNotLoadFromDetachedFragment() throws Exception {
+        MobilePlaybackFragment fragment = new MobilePlaybackFragment();
+        java.lang.reflect.Field avatar = MobilePlaybackFragment.class.getDeclaredField("avatar");
+        avatar.setAccessible(true);
+        avatar.set(fragment, new android.widget.ImageView(RuntimeEnvironment.getApplication()));
+        fragment.setChannelIcon("https://example.invalid/channel.png");
+    }
+
+    private static class Selector extends RestoreTrackSelector {
+        Selector() {
+            super(new AdaptiveTrackSelection.Factory());
+            requireSupportedFormats();
+        }
+
+        Definition choose(TrackGroupArray groups, int[][] support) throws Exception {
+            return selectVideoTrack(groups, support, 0, getParameters(), false);
+        }
+    }
+
+    @Test
+    public void unsupportedSavedFormatFallsBackBeforeDecoderStartupAndUpdatesSelection()
+            throws Exception {
+        TrackGroup group =
+                new TrackGroup(
+                        Format.createVideoSampleFormat(
+                                "av1",
+                                "video/av01",
+                                null,
+                                20000000,
+                                -1,
+                                3840,
+                                2160,
+                                60,
+                                null,
+                                null),
+                        Format.createVideoSampleFormat(
+                                "avc", "video/avc", null, 4000000, -1, 1920, 1080, 30, null, null));
+        TrackGroupArray groups = new TrackGroupArray(group);
+        int[][] support = {
+            {RendererCapabilities.FORMAT_UNSUPPORTED_SUBTYPE, RendererCapabilities.FORMAT_HANDLED}
+        };
+        Selector selector = new Selector();
+        Definition[] updated = {null};
+        selector.setOnTrackSelectCallback(
+                (RestoreTrackSelector.TrackSelectorCallback)
+                        Proxy.newProxyInstance(
+                                getClass().getClassLoader(),
+                                new Class<?>[] {RestoreTrackSelector.TrackSelectorCallback.class},
+                                (proxy, method, args) -> {
+                                    if (method.getName().equals("onSelectVideoTrack"))
+                                        return new Pair<>(new Definition(group, 0), null);
+                                    if (method.getName().equals("updateVideoTrackSelection"))
+                                        updated[0] = (Definition) args[2];
+                                    return null;
+                                }));
+        Definition selected = selector.choose(groups, support);
+        assertArrayEquals(new int[] {1}, selected.tracks);
+        assertSame(selected, updated[0]);
+        assertFalse(selector.getParameters().exceedRendererCapabilitiesIfNecessary);
+    }
+
+    @Test
+    public void supportedSavedFormatIsRetainedIncludingCapabilityFlags() throws Exception {
+        TrackGroup group =
+                new TrackGroup(
+                        Format.createVideoSampleFormat(
+                                "avc", "video/avc", null, 4000000, -1, 1920, 1080, 30, null, null));
+        TrackGroupArray groups = new TrackGroupArray(group);
+        Definition saved = new Definition(group, 0);
+        Selector selector = new Selector();
+        selector.setOnTrackSelectCallback(
+                (RestoreTrackSelector.TrackSelectorCallback)
+                        Proxy.newProxyInstance(
+                                getClass().getClassLoader(),
+                                new Class<?>[] {RestoreTrackSelector.TrackSelectorCallback.class},
+                                (proxy, method, args) ->
+                                        method.getName().equals("onSelectVideoTrack")
+                                                ? new Pair<>(saved, null)
+                                                : null));
+        assertSame(
+                saved,
+                selector.choose(
+                        groups,
+                        new int[][] {
+                            {
+                                RendererCapabilities.FORMAT_HANDLED
+                                        | RendererCapabilities.ADAPTIVE_SEAMLESS
+                            }
+                        }));
+    }
+}

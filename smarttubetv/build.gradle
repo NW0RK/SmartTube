@@ -55,7 +55,7 @@ android {
     defaultConfig {
         // values linked with applicationId: searchable.searchSuggestAuthority, searchable.searchSuggestIntentData, VideoContract.CONTENT_AUTHORITY
         applicationId "app.smarttube"
-        minSdkVersion project.properties.minSdkVersion
+        minSdkVersion 26
         targetSdkVersion project.properties.targetSdkVersion
         versionCode 2457
         versionName "32.67"
@@ -169,7 +169,7 @@ android {
         }
         stfdroid {
             applicationId "app.smarttube.fdroid"
-            minSdkVersion 21
+            minSdkVersion 26
             targetSdkVersion project.properties.compileSdkVersion
 
             // The content of Universal apk

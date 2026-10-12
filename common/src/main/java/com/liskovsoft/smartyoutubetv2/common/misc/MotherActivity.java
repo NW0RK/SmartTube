@@ -74,32 +74,19 @@ public class MotherActivity extends FragmentActivity {
         Log.d(TAG, "Starting %s...", this.getClass().getSimpleName());
 
         mIsOculusQuestFixEnabled = PlayerTweaksData.instance(this).isOculusQuestFixEnabled();
-        mIsFullscreenModeEnabled = GeneralData.instance(this).isFullscreenModeEnabled();
+        mIsFullscreenModeEnabled = false;
 
         initDpi();
         initTheme();
 
-        // Search Fullscreen routine inside onPause() method
-        if (!mIsFullscreenModeEnabled) {
-            // There's no way to do this programmatically!
-            setTheme(R.style.FitSystemWindows);
-
-            // totally disabling the translucency or any color placed on the status bar and navigation bar
-            //if (Build.VERSION.SDK_INT >= 19) {
-            //    Window w = getWindow();
-            //    w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-            //}
-        }
-
-        if (mIsOculusQuestFixEnabled && VERSION.SDK_INT != 26) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
+        // Mobile activities handle system bars and fullscreen explicitly.
+        // Ignore the saved TV fullscreen and forced-landscape preferences.
 
         mScreensaverManager = new ScreensaverManager(this); // moved below the theme to fix side effects
 
         //Helpers.addFullscreenListener(this);
 
-        initEdgeSlide();
+        // Android system Back handles phone navigation.
     }
 
     @Override
@@ -219,7 +206,7 @@ public class MotherActivity extends FragmentActivity {
         applyFullscreenModeIfNeeded();
 
         // Restore this activity's screensaver policy after returning to the foreground.
-        mScreensaverManager.resume();
+        mScreensaverManager.suspend();
     }
 
     @Override
@@ -258,27 +245,8 @@ public class MotherActivity extends FragmentActivity {
     }
 
     private void initDpi() {
-        getResources().getDisplayMetrics().setTo(getDisplayMetrics(this));
-    }
-
-    private DisplayMetrics getDisplayMetrics(Context context) {
-        // BUG: adapt to resolution change (e.g. on AFR)
-        // Don't disable caching or you will experience weird sizes on cards in video suggestions (e.g. after exit from PIP)!
-        if (sCachedDisplayMetrics == null) {
-            // NOTE: Don't replace with getResources().getDisplayMetrics(). Shows wrong metrics here!
-            DisplayMetrics displayMetrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            float uiScale = MainUIData.instance(context).getUIScale();
-            // Take into the account screen orientation (e.g. when running on phone)
-            int widthPixels = Math.max(displayMetrics.widthPixels, displayMetrics.heightPixels);
-            float widthRatio = DEFAULT_WIDTH / widthPixels;
-            float density = DEFAULT_DENSITY / widthRatio * uiScale;
-            displayMetrics.density = density;
-            displayMetrics.scaledDensity = density;
-            sCachedDisplayMetrics = displayMetrics;
-        }
-
-        return sCachedDisplayMetrics;
+        // Phone layouts use Android's actual density and the user's font scale.
+        sCachedDisplayMetrics = null;
     }
 
     private void applyCustomConfig() {

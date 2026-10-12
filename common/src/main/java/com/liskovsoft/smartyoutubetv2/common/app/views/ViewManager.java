@@ -438,6 +438,11 @@ public class ViewManager {
     }
 
     public boolean isVisible(Object view) {
+        if (view instanceof androidx.fragment.app.FragmentActivity) {
+            return ((androidx.fragment.app.FragmentActivity) view).getLifecycle()
+                    .getCurrentState().isAtLeast(Lifecycle.State.STARTED);
+        }
+
         if (view instanceof Fragment) {
             return ((Fragment) view).isVisible();
         }
@@ -457,7 +462,7 @@ public class ViewManager {
     }
 
     public static MotherActivity getMotherActivity(Object view) {
-        MotherActivity motherActivity = null;
+        MotherActivity motherActivity = view instanceof MotherActivity ? (MotherActivity) view : null;
 
         if (view instanceof Fragment && ((Fragment) view).getActivity() instanceof MotherActivity) {
             motherActivity = ((MotherActivity) ((Fragment) view).getActivity());

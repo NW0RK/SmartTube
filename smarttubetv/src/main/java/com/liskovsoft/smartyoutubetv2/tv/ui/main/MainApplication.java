@@ -24,6 +24,7 @@ import com.liskovsoft.smartyoutubetv2.common.prefs.PlayerData;
 import com.liskovsoft.smartyoutubetv2.common.prefs.PlayerTweaksData;
 import com.liskovsoft.smartyoutubetv2.tv.ui.adddevice.AddDeviceActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.browse.BrowseActivity;
+import com.liskovsoft.smartyoutubetv2.tv.ui.mobile.*;
 import com.liskovsoft.smartyoutubetv2.tv.ui.channel.ChannelActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.channeluploads.ChannelUploadsActivity;
 import com.liskovsoft.smartyoutubetv2.tv.ui.dialogs.AppDialogActivity;
@@ -88,19 +89,17 @@ public class MainApplication extends MultiDexApplication { // fix: Didn't find c
     private void setupViewManager() {
         ViewManager viewManager = ViewManager.instance(this);
 
-        Class<? extends AppDialogActivity> dialogClass = getDialogClass();
-
-        viewManager.setRoot(BrowseActivity.class);
-        viewManager.register(SplashView.class, SplashActivity.class); // no parent, because it's root activity
-        viewManager.register(BrowseView.class, BrowseActivity.class); // no parent, because it's root activity
-        viewManager.register(PlaybackView.class, PlaybackActivity.class, BrowseActivity.class);
-        viewManager.register(AppDialogView.class, dialogClass, BrowseActivity.class);
-        viewManager.register(SearchView.class, SearchTagsActivity.class, BrowseActivity.class);
-        viewManager.register(SignInView.class, SignInActivity.class, BrowseActivity.class);
-        viewManager.register(AddDeviceView.class, AddDeviceActivity.class, BrowseActivity.class);
-        viewManager.register(ChannelView.class, ChannelActivity.class, BrowseActivity.class);
-        viewManager.register(ChannelUploadsView.class, ChannelUploadsActivity.class, BrowseActivity.class);
-        viewManager.register(WebBrowserView.class, WebBrowserActivity.class, BrowseActivity.class);
+        viewManager.setRoot(MobileBrowseActivity.class);
+        viewManager.register(SplashView.class, SplashActivity.class);
+        viewManager.register(BrowseView.class, MobileBrowseActivity.class);
+        viewManager.register(PlaybackView.class, MobilePlaybackActivity.class, MobileBrowseActivity.class);
+        viewManager.register(AppDialogView.class, MobileDialogActivity.class, MobileBrowseActivity.class);
+        viewManager.register(SearchView.class, MobileSearchActivity.class, MobileBrowseActivity.class);
+        viewManager.register(SignInView.class, MobileSignInActivity.class, MobileBrowseActivity.class);
+        viewManager.register(AddDeviceView.class, MobileAddDeviceActivity.class, MobileBrowseActivity.class);
+        viewManager.register(ChannelView.class, MobileChannelActivity.class, MobileBrowseActivity.class);
+        viewManager.register(ChannelUploadsView.class, MobileUploadsActivity.class, MobileBrowseActivity.class);
+        viewManager.register(WebBrowserView.class, MobileBrowserActivity.class, MobileBrowseActivity.class);
     }
 
     /**

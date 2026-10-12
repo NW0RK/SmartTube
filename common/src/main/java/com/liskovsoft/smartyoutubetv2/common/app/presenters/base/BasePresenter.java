@@ -53,7 +53,7 @@ public abstract class BasePresenter<T> implements Presenter<T> {
 
     @Override
     public void setView(T view) {
-        if (checkView(view)) {
+        if (view == null || checkView(view)) {
             mView = new WeakReference<>(view);
         }
     }

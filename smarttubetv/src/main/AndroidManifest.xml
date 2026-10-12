@@ -38,9 +38,6 @@
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
-    <uses-feature
-        android:name="android.software.leanback"
-        android:required="true" />
 
     <!-- android:usesCleartextTraffic - allow HTTP traffic -->
     <!-- Alt cleartext options: https://stackoverflow.com/questions/45940861/android-8-cleartext-http-traffic-not-permitted -->
@@ -77,7 +74,7 @@
 
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+
             </intent-filter>
             <!-- Process intents from other apps -->
             <intent-filter>
@@ -127,7 +124,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+
             </intent-filter>
         </activity-alias>
 
@@ -298,6 +295,15 @@
             android:screenOrientation="unspecified"/>
 
         <!-- END Launchers -->
+        <activity android:name=".ui.mobile.MobileBrowseActivity" android:launchMode="singleTask" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobilePlaybackActivity" android:launchMode="singleTask" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:resizeableActivity="true"/>
+        <activity android:name=".ui.mobile.MobileSearchActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileChannelActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileUploadsActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileDialogActivity" android:launchMode="singleTop" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileSignInActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileAddDeviceActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileBrowserActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
     </application>
 
 </manifest>

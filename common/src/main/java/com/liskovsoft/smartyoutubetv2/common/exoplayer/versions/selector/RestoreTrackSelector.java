@@ -17,6 +17,7 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
     private static final int FORMAT_NOT_SUPPORTED = 19;
     private static final int FORMAT_FORCE_SUPPORT = 52;
     private TrackSelectorCallback mCallback;
+    private boolean mRequireSupportedFormats;
 
     public interface TrackSelectorCallback {
         Pair<Definition, MediaTrack> onSelectVideoTrack(TrackGroupArray groups, Parameters params);
@@ -31,6 +32,25 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
         super(trackSelectionFactory);
         // Could help with Shield resolution bug?
         //setParameters(buildUponParameters().setForceHighestSupportedBitrate(true));
+    }
+
+    /** Phone playback must respect decoder capabilities even for saved TV format preferences. */
+    public void requireSupportedFormats() {
+        mRequireSupportedFormats = true;
+        setParameters(buildUponParameters()
+                .setExceedRendererCapabilitiesIfNecessary(false));
+    }
+
+    public static boolean isSelectionSupported(TrackGroupArray groups, int[][] support, Definition selection) {
+        int group = groups.indexOf(selection.group);
+        if (group < 0 || group >= support.length) return false;
+        for (int track : selection.tracks) {
+            if (track < 0 || track >= support[group].length ||
+                    (support[group][track] & RendererCapabilities.FORMAT_SUPPORT_MASK) != RendererCapabilities.FORMAT_HANDLED) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void setOnTrackSelectCallback(TrackSelectorCallback callback) {
@@ -130,7 +150,10 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
 
             if (resultPair != null) {
                 Log.d(TAG, "selectVideoTrack: choose custom video processing");
-                return resultPair.first;
+                if (!mRequireSupportedFormats || isSelectionSupported(groups, formatSupports, resultPair.first)) {
+                    return resultPair.first;
+                }
+                // Resolve a supported alternative before attempting decoder initialization.
             } else {
                 return null; // video disabled
             }
@@ -157,7 +180,9 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
             Pair<Definition, MediaTrack> resultPair = mCallback.onSelectAudioTrack(groups, params);
             if (resultPair != null) {
                 Log.d(TAG, "selectVideoTrack: choose custom audio processing");
-                return new Pair<>(resultPair.first, new AudioTrackScore(resultPair.second.format, params, RendererCapabilities.FORMAT_HANDLED));
+                if (!mRequireSupportedFormats || isSelectionSupported(groups, formatSupports, resultPair.first)) {
+                    return new Pair<>(resultPair.first, new AudioTrackScore(resultPair.second.format, params, RendererCapabilities.FORMAT_HANDLED));
+                }
             } else {
                 return null; // audio disabled
             }

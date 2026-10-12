@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingBottom="16dp">
+    <FrameLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+        <com.liskovsoft.smartyoutubetv2.tv.ui.mobile.MobileThumbnailView android:id="@+id/mobile_thumbnail" android:layout_width="match_parent" android:layout_height="wrap_content" android:scaleType="centerCrop" android:importantForAccessibility="no" android:background="#232323"/>
+        <TextView android:id="@+id/mobile_duration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="8dp" android:padding="4dp" android:textColor="#FFFFFF" android:textSize="12sp" android:background="#CC000000"/>
+    </FrameLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp">
+            <TextView android:id="@+id/mobile_card_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="2" android:ellipsize="end" android:textSize="16sp" android:textColor="#FFFFFF"/>
+            <TextView android:id="@+id/mobile_card_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textSize="13sp" android:textColor="#AAAAAA"/>
+        </LinearLayout>
+        <Button android:id="@+id/mobile_card_menu" android:layout_width="48dp" android:layout_height="48dp" android:text="⋮" android:textColor="#FFFFFF" android:background="?android:attr/selectableItemBackgroundBorderless" android:contentDescription="@string/mobile_more"/>
+    </LinearLayout>
+</LinearLayout>
