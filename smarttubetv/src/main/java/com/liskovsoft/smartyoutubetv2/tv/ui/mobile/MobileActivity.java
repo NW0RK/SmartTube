@@ -54,6 +54,7 @@ public abstract class MobileActivity extends MotherActivity {
         // The departing top screen can be a menu or account screen above the watch page.
         // Internal navigation replaces the registered top before the previous screen stops.
         if (isFinishing()
+                || com.liskovsoft.smartyoutubetv2.common.utils.Utils.isHardScreenOff(this)
                 || getViewManager().getTopView() != getViewManager().getView(getClass())
                 || com.liskovsoft.smartyoutubetv2.common.prefs.PlayerData.instance(this)
                                 .getBackgroundMode()

@@ -34,7 +34,7 @@ public class MobileUploadsActivity extends MobileActivity implements ChannelUplo
                         presenter::onVideoItemLongClicked,
                         presenter::onScrollEnd);
         root.addView(feed, new LinearLayout.LayoutParams(-1, 0, 1));
-        setContentView(root);
+        setContentView(new MobileNavigationShell(this, root, MobileNavigationShell.destinations(this)));
         feed.setRetry(presenter::refresh);
         presenter.onViewInitialized();
     }

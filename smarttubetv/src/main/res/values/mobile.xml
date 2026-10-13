@@ -2,8 +2,8 @@
     <item name="mobile_watch_container" type="id"/>
     <style name="MobileTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#FF3D3D</item>
-        <item name="android:windowBackground">#0F0F0F</item>
+        <item name="android:colorAccent">@color/mobile_accent</item>
+        <item name="android:windowBackground">@color/mobile_background</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowFullscreen">false</item>

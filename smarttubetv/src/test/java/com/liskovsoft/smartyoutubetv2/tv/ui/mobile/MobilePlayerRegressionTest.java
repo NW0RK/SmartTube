@@ -30,6 +30,57 @@ import java.lang.reflect.Proxy;
 @Config(sdk = 28, application = Application.class)
 public class MobilePlayerRegressionTest {
     @Test
+    public void commentsAndRepliesLeaveVideoOutsideWindowAndMenusRestoreModalWindow() {
+        org.robolectric.android.controller.ActivityController<MobileDialogActivity> controller =
+                org.robolectric.Robolectric.buildActivity(MobileDialogActivity.class).create();
+        MobileDialogActivity activity = controller.get();
+        com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory comments =
+                com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.from(
+                        1, com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.TYPE_COMMENTS,
+                        "Comments", java.util.Collections.emptyList());
+        activity.show(java.util.Collections.singletonList(comments), "Comments", false, true, true, 1);
+        android.view.WindowManager.LayoutParams window = activity.getWindow().getAttributes();
+        int sheetHeight = window.height;
+        assertTrue(sheetHeight > 0);
+        assertTrue(sheetHeight < activity.getResources().getDisplayMetrics().heightPixels);
+        assertEquals(android.view.Gravity.BOTTOM, window.gravity);
+        assertTrue((window.flags & android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL) != 0);
+        android.view.MotionEvent outside = android.view.MotionEvent.obtain(
+                0, 0, android.view.MotionEvent.ACTION_OUTSIDE, 0, -100, 0);
+        activity.onTouchEvent(outside);
+        outside.recycle();
+        assertFalse(activity.isFinishing());
+
+        activity.show(java.util.Collections.singletonList(comments), "Replies", false, true, true, 2);
+        activity.onBackPressed();
+        assertEquals(sheetHeight, activity.getWindow().getAttributes().height);
+        activity.onConfigurationChanged(activity.getResources().getConfiguration());
+        assertEquals(sheetHeight, activity.getWindow().getAttributes().height);
+
+        activity.show(java.util.Collections.emptyList(), "Settings", false, false, false, 3);
+        window = activity.getWindow().getAttributes();
+        assertEquals(android.view.WindowManager.LayoutParams.MATCH_PARENT, window.height);
+        assertEquals(0, window.flags & android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
+        activity.onBackPressed();
+        assertEquals(sheetHeight, activity.getWindow().getAttributes().height);
+        controller.destroy();
+    }
+
+    @Test
+    public void commentsWindowIsTranslucentFromLaunchSoPlayerRemainsVisible() throws Exception {
+        Context app = RuntimeEnvironment.getApplication();
+        android.content.pm.ActivityInfo info = app.getPackageManager().getActivityInfo(
+                new android.content.ComponentName(app, MobileDialogActivity.class), 0);
+        assertEquals(R.style.MobileDialogTheme, info.getThemeResource());
+        Context themed = new ContextThemeWrapper(app, info.getThemeResource());
+        android.content.res.TypedArray window = themed.obtainStyledAttributes(
+                new int[] {android.R.attr.windowIsTranslucent, android.R.attr.backgroundDimEnabled});
+        assertTrue(window.getBoolean(0, false));
+        assertFalse(window.getBoolean(1, true));
+        window.recycle();
+    }
+
+    @Test
     public void defaultZoomKeepsVideoFullSizeAndExplicitZoomAndFlipStillWork() {
         Context context =
                 new ContextThemeWrapper(

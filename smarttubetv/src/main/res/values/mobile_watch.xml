@@ -1,0 +1,22 @@
+<resources>
+    <string name="mobile_download">Download</string>
+    <string name="mobile_download_no_video">Open a video first</string>
+    <string name="mobile_download_install_title">Install YTDLnis</string>
+    <string name="mobile_download_install_message">Download opens YTDLnis on your phone. Install it separately, then try again.</string>
+    <string name="mobile_download_install">Get YTDLnis</string>
+    <string name="mobile_watch_comments">Comments</string>
+    <string name="mobile_comments_close">Close comments</string>
+    <string name="mobile_comments_like">Like comment</string>
+    <string name="mobile_comments_more">Load more comments</string>
+    <string name="mobile_watch_description">Show description</string>
+    <string name="mobile_watch_rewind">Rewind 10 seconds</string>
+    <string name="mobile_watch_forward">Forward 10 seconds</string>
+    <string name="mobile_watch_chapters">Chapters</string>
+    <style name="MobileDialogTheme" parent="MobileTheme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+</resources>

@@ -40,6 +40,8 @@ public class MobileSignInActivity extends MobileActivity implements SignInView {
                     while (content.getChildCount() > 1) content.removeViewAt(1);
                     ScrollView scroll = new ScrollView(this);
                     LinearLayout page = MobileUi.column(this);
+        page.setPadding(MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 24));
+                    page.setPadding(MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 24));
                     scroll.addView(page);
                     content.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
                     TextView label = MobileUi.text(this, code, 28);

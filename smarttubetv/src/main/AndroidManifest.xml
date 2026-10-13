@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <uses-sdk tools:overrideLibrary="
         androidx.leanback.preference,
@@ -296,11 +298,13 @@
 
         <!-- END Launchers -->
         <activity android:name=".ui.mobile.MobileBrowseActivity" android:launchMode="singleTask" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <service android:name=".ui.mobile.MobilePlaybackService"
+            android:exported="false" android:foregroundServiceType="mediaPlayback" />
         <activity android:name=".ui.mobile.MobilePlaybackActivity" android:launchMode="singleTask" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:resizeableActivity="true"/>
         <activity android:name=".ui.mobile.MobileSearchActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.mobile.MobileChannelActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.mobile.MobileUploadsActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
-        <activity android:name=".ui.mobile.MobileDialogActivity" android:launchMode="singleTop" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ui.mobile.MobileDialogActivity" android:theme="@style/MobileDialogTheme" android:launchMode="singleTop" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.mobile.MobileSignInActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.mobile.MobileAddDeviceActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".ui.mobile.MobileBrowserActivity" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>

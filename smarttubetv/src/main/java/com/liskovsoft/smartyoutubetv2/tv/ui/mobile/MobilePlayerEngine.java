@@ -43,6 +43,8 @@ public abstract class MobilePlayerEngine extends Fragment
     private MediaSessionCompat mMediaSession;
     private MediaSessionConnector mMediaSessionConnector;
     private boolean mIsEngineBlocked;
+    private boolean playbackServiceStarted;
+    private Player.EventListener playbackServiceListener;
     private int zoom = 100, rotation;
     private float aspect;
     private boolean flip;
@@ -75,10 +77,27 @@ public abstract class MobilePlayerEngine extends Fragment
                 new CustomOverridesRenderersFactory(requireContext());
         renderers.setEnableDecoderFallback(true);
         mPlayer = mPlayerInitializer.createPlayer(requireContext(), renderers, selector);
+        playbackServiceListener = new Player.EventListener() {
+            @Override
+            public void onPlayerStateChanged(boolean playWhenReady, int state) {
+                // Reserve protection while the initial source is still being resolved.
+                if (state == Player.STATE_IDLE) return;
+                boolean active = playWhenReady
+                        && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
+                updatePlaybackService(active);
+            }
+
+            @Override
+            public void onPlayerError(ExoPlaybackException error) {
+                updatePlaybackService(false);
+            }
+        };
+        mPlayer.addListener(playbackServiceListener);
         mExoPlayerController.setPlayerView(this);
         mExoPlayerController.setPlayer(mPlayer);
         surface.setPlayer(mPlayer);
         createMediaSession();
+        updatePlaybackService(true);
         onPlayerCreated();
         mPlaybackPresenter.setView(this);
         mPlaybackPresenter.onEngineInitialized();
@@ -86,8 +105,29 @@ public abstract class MobilePlayerEngine extends Fragment
 
     protected void onPlayerCreated() {}
 
+    protected void resumePlaybackService() {
+        if (mPlayer != null && mPlayer.getPlayWhenReady()
+                && mPlayer.getPlaybackError() == null) updatePlaybackService(true);
+    }
+
+    private void updatePlaybackService(boolean active) {
+        if (active == playbackServiceStarted) return;
+        if (active) {
+            playbackServiceStarted = MobilePlaybackService.start(requireContext(),
+                    mMediaSession == null ? null : mMediaSession.getSessionToken());
+        } else {
+            MobilePlaybackService.stop(requireContext());
+            playbackServiceStarted = false;
+        }
+    }
+
     protected void releasePlayer() {
         if (mPlayer == null) return;
+        mPlayer.removeListener(playbackServiceListener);
+        playbackServiceListener = null;
+        // Stop protection before releasing the player, including while it is buffering.
+        MobilePlaybackService.stop(requireContext());
+        playbackServiceStarted = false;
         mPlaybackPresenter.onEngineReleased();
         if (mMediaSessionConnector != null) {
             mMediaSessionConnector.setPlayer(null);
@@ -313,6 +353,8 @@ public abstract class MobilePlayerEngine extends Fragment
     @Override
     public void setPlayWhenReady(boolean play) {
         mExoPlayerController.setPlayWhenReady(play);
+        // An explicit pause can arrive before the initial source leaves STATE_IDLE.
+        if (!play) updatePlaybackService(false);
     }
 
     @Override

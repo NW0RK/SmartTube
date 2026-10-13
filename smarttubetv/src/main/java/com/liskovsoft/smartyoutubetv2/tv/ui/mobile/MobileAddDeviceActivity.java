@@ -18,6 +18,8 @@ public class MobileAddDeviceActivity extends MobileActivity implements AddDevice
         root.addView(MobileUi.toolbar(this, "Link device", this::finish));
         ScrollView scroll = new ScrollView(this);
         LinearLayout page = MobileUi.column(this);
+        page.setPadding(MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 24));
+                    page.setPadding(MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 24));
         scroll.addView(page);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         code = MobileUi.text(this, "…", 28);

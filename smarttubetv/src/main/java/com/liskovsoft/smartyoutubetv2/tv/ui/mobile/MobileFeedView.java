@@ -16,27 +16,39 @@ public final class MobileFeedView extends LinearLayout {
     private final TextView message;
     private final Button retry;
     private Runnable retryAction;
+    private final LinearLayout status;
+    private boolean busy, completed, failed;
+    private String emptyText;
 
     public MobileFeedView(
             Context c, Consumer<Video> click, Consumer<Video> menu, Consumer<Video> more) {
         super(c);
         setOrientation(VERTICAL);
         setBackgroundColor(MobileUi.background(c));
+        emptyText = c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_empty);
+        status = new LinearLayout(c);
+        status.setOrientation(VERTICAL);
+        status.setGravity(android.view.Gravity.CENTER);
+        int padding = c.getResources().getDimensionPixelSize(com.liskovsoft.smartyoutubetv2.tv.R.dimen.mobile_page_padding);
+        status.setPadding(padding, padding, padding, padding);
         progress = new ProgressBar(c);
-        addView(progress, new LayoutParams(-1, MobileUi.dp(c, 48)));
+        progress.setContentDescription(c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_loading));
+        status.addView(progress, new LayoutParams(MobileUi.dp(c, 48), MobileUi.dp(c, 48)));
         progress.setVisibility(GONE);
         message =
                 MobileUi.text(
                         c,
                         c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_empty),
                         16);
-        addView(message);
+        message.setGravity(android.view.Gravity.CENTER);
+        message.setAccessibilityLiveRegion(android.view.View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        status.addView(message);
         retry =
-                MobileUi.button(
+                MobileUi.browseButton(
                         c,
                         c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_retry),
                         () -> {});
-        addView(retry);
+        status.addView(retry);
         retry.setVisibility(GONE);
         list = new RecyclerView(c);
         adapter = new MobileFeedAdapter(click, menu, more);
@@ -44,6 +56,11 @@ public final class MobileFeedView extends LinearLayout {
         list.setItemAnimator(null);
         resize();
         addView(list, new LayoutParams(-1, 0, 1));
+        addView(status, new LayoutParams(-1, 0, 1));
+        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override public void onChanged() { render(); }
+        });
+        render();
     }
 
     public void setRetry(Runnable action) {
@@ -73,12 +90,14 @@ public final class MobileFeedView extends LinearLayout {
 
     public void update(VideoGroup g) {
         adapter.update(g);
-        message.setVisibility(adapter.isEmpty() ? VISIBLE : GONE);
-        retry.setVisibility(GONE);
+        completed = true;
+        failed = false;
+        render();
     }
 
     public void clear() {
         adapter.clear();
+        completed = failed = false;
         message.setText(
                 getContext().getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_empty));
         message.setVisibility(GONE);
@@ -86,21 +105,28 @@ public final class MobileFeedView extends LinearLayout {
         retry.setText(
                 getContext().getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_retry));
         if (retryAction != null) retry.setOnClickListener(v -> retryAction.run());
+        render();
     }
 
     public void loading(boolean value) {
-        progress.setVisibility(value ? VISIBLE : GONE);
-        if (!value && adapter.isEmpty()) {
-            message.setVisibility(VISIBLE);
-            retry.setVisibility(retryAction == null ? GONE : VISIBLE);
-        }
+        if (busy && !value) completed = true;
+        busy = value;
+        if (value) failed = false;
+        render();
+    }
+
+    public void idle() {
+        busy = false;
+        clear();
     }
 
     public boolean loading() {
-        return progress.getVisibility() == VISIBLE;
+        return busy;
     }
 
     public void error(String text, String action, Runnable callback) {
+        busy = false;
+        failed = completed = true;
         message.setText(text);
         message.setVisibility(VISIBLE);
         Runnable actionCallback = callback == null ? retryAction : callback;
@@ -114,5 +140,25 @@ public final class MobileFeedView extends LinearLayout {
                     if (actionCallback != null) actionCallback.run();
                 });
         retry.setVisibility(actionCallback == null ? GONE : VISIBLE);
+        render();
+    }
+
+    public void setEmptyText(String text) {
+        emptyText = text;
+        render();
+    }
+
+    private void render() {
+        boolean empty = adapter.isEmpty();
+        boolean visible = busy || failed || empty && completed;
+        // Keep header-bearing feeds (watch details and channel banners) visible.
+        boolean hasRows = adapter.getItemCount() > 0;
+        list.setVisibility(hasRows ? VISIBLE : GONE);
+        status.setVisibility(visible ? VISIBLE : GONE);
+        status.setLayoutParams(new LayoutParams(-1, hasRows ? -2 : 0, hasRows ? 0 : 1));
+        progress.setVisibility(busy ? VISIBLE : GONE);
+        message.setVisibility(!busy && (failed || empty && completed) ? VISIBLE : GONE);
+        if (!failed) message.setText(emptyText);
+        if (!failed) retry.setVisibility(GONE);
     }
 }

@@ -33,22 +33,30 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
         super.onCreate(state);
         presenter = SearchPresenter.instance(this);
         presenter.setView(this);
-        LinearLayout root = MobileUi.column(this), bar = MobileUi.toolbar(this, "", this::finish);
-        bar.removeViewAt(bar.getChildCount() - 1);
+        LinearLayout root = MobileUi.column(this);
         query = new EditText(this);
         query.setSingleLine(true);
         query.setTextColor(android.graphics.Color.WHITE);
         query.setHint(getString(R.string.action_search));
         query.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        bar.addView(query, new LinearLayout.LayoutParams(0, -2, 1));
-        MobileUi.addButton(bar, MobileUi.button(this, "🎙", this::startVoiceRecognition));
+        ImageButton clear = MobileUi.browseIcon(this, R.drawable.mobile_clear,
+                getString(R.string.mobile_clear_search), () -> {
+                    query.setText("");
+                    feed.idle();
+                    startSearch(null);
+                });
+        clear.setVisibility(View.GONE);
+        LinearLayout bar = MobileUi.searchToolbar(this, query, clear, this::finish, this::startVoiceRecognition);
         root.addView(bar);
-        root.addView(
-                MobileUi.button(
+        LinearLayout filters = new LinearLayout(this);
+        MobileUi.addBrowseButton(filters,
+                MobileUi.browseButton(
                         this,
                         getString(R.string.settings_search),
                         presenter::onSearchSettingsClicked));
+        root.addView(filters);
         HorizontalScrollView strip = new HorizontalScrollView(this);
+        strip.setHorizontalScrollBarEnabled(false);
         tags = new LinearLayout(this);
         strip.addView(tags);
         root.addView(strip);
@@ -61,6 +69,7 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
         root.addView(feed, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
         feed.setRetry(this::submit);
+        feed.setEmptyText(getString(R.string.mobile_search_empty));
         query.setOnEditorActionListener(
                 (v, action, event) -> {
                     if (action == EditorInfo.IME_ACTION_SEARCH
@@ -78,6 +87,8 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
                             CharSequence s, int start, int count, int after) {}
 
                     public void onTextChanged(CharSequence s, int start, int before, int count) {
+                        clear.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
+                        if (s.toString().trim().isEmpty()) feed.idle();
                         revision++;
                         handler.removeCallbacks(suggest);
                         handler.postDelayed(suggest, 250);
@@ -93,6 +104,8 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
         String text = getSearchText().trim();
         if (text.isEmpty()) return;
         tags.removeAllViews();
+        revision++;
+        handler.removeCallbacks(suggest);
         query.clearFocus();
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
                 .hideSoftInputFromWindow(query.getWindowToken(), 0);
@@ -112,7 +125,7 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
                                     if (results != null)
                                         for (Tag tag : results) {
                                             Button button =
-                                                    MobileUi.button(
+                                                    MobileUi.browseButton(
                                                             this,
                                                             tag.tag,
                                                             () -> {
@@ -125,7 +138,7 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
                                                         presenter.onTagLongClicked(tag);
                                                         return true;
                                                     });
-                                            MobileUi.addButton(tags, button);
+                                            MobileUi.addBrowseButton(tags, button);
                                         }
                                 }));
     }
@@ -150,6 +163,7 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
 
     @Override
     public void updateSearch(VideoGroup g) {
+        if (getSearchText().trim().isEmpty()) return;
         feed.update(g);
     }
 
@@ -178,7 +192,9 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
 
     @Override
     public void showProgressBar(boolean show) {
-        runOnUiThread(() -> feed.loading(show));
+        runOnUiThread(() -> {
+            if (!getSearchText().trim().isEmpty()) feed.loading(show);
+        });
     }
 
     @Override

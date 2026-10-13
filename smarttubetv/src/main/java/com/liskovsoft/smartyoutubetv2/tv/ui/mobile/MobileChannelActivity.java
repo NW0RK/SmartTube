@@ -33,9 +33,7 @@ public class MobileChannelActivity extends MobileActivity implements ChannelView
         }
         LinearLayout root = MobileUi.column(this);
         CharSequence title =
-                presenter.getChannel() == null
-                        ? getString(R.string.header_channels)
-                        : presenter.getChannel().getTitleFull();
+                MobileChannelHeader.name(this, presenter.getChannel(), presenter.getChannelId());
         LinearLayout toolbar = MobileUi.toolbar(this, title, this::finish);
         toolbar.addView(
                 MobileUi.iconButton(
@@ -57,6 +55,7 @@ public class MobileChannelActivity extends MobileActivity implements ChannelView
                         presenter::onSearchSettingsClicked));
         root.addView(toolbar);
         channelSearch = new EditText(this);
+        MobileUi.styleInput(channelSearch);
         channelSearch.setSingleLine(true);
         channelSearch.setHint(getString(R.string.action_search));
         channelSearch.setTextColor(android.graphics.Color.WHITE);
@@ -82,7 +81,8 @@ public class MobileChannelActivity extends MobileActivity implements ChannelView
                         presenter::onVideoItemLongClicked,
                         presenter::onScrollEnd);
         root.addView(feed, new LinearLayout.LayoutParams(-1, 0, 1));
-        setContentView(root);
+        feed.adapter.setHeader(MobileChannelHeader.create(this, presenter.getChannel(), presenter.getChannelId()));
+        setContentView(new MobileNavigationShell(this, root, MobileNavigationShell.destinations(this)));
         feed.setRetry(presenter::onViewInitialized);
         presenter.onViewInitialized();
     }

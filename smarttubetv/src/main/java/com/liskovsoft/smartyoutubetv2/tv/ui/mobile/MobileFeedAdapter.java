@@ -20,6 +20,11 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
     private final Map<Integer, Integer> requestedSizes = new HashMap<>();
     private final Map<Integer, List<Video>> videos = new LinkedHashMap<>();
     private View header;
+    private boolean compactCards;
+
+    void setCompactCards(boolean compact) {
+        compactCards = compact;
+    }
     private final List<Object> rows = new ArrayList<>();
     private final Consumer<Video> click, menu, more;
 
@@ -143,9 +148,11 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
         }
         if (type == 0)
             return new RecyclerView.ViewHolder(MobileUi.text(parent.getContext(), "", 18)) {};
-        return new Card(
+        Card card = new Card(
                 LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.mobile_video_card, parent, false));
+                        .inflate(compactCards ? R.layout.mobile_watch_video_card : R.layout.mobile_video_card, parent, false));
+        card.image.setClipToOutline(true);
+        return card;
     }
 
     @Override
@@ -208,6 +215,7 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
             meta = v.findViewById(R.id.mobile_card_meta);
             badge = v.findViewById(R.id.mobile_duration);
             menu = v.findViewById(R.id.mobile_card_menu);
+            if (menu instanceof Button) MobileUi.centerIcon((Button) menu, "more", 22);
         }
     }
 }

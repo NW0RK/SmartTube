@@ -24,6 +24,9 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     private Parcelable pendingScroll;
     private int selected = -1;
     private boolean you;
+    private HorizontalScrollView sectionStrip;
+    private Button youTab;
+    private int requestedDestination = -1;
 
     @Override
     public void onCreate(Bundle state) {
@@ -31,15 +34,19 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         presenter = BrowsePresenter.instance(this);
         presenter.setView(this);
         LinearLayout root = MobileUi.column(this), top = MobileUi.toolbar(this, "SmartTube", null);
+        ImageView brand = new ImageView(this);
+        brand.setImageResource(R.drawable.mobile_brand);
+        brand.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        top.addView(brand, 0, new LinearLayout.LayoutParams(MobileUi.dp(this, 40), MobileUi.dp(this, 32)));
         top.addView(
-                MobileUi.iconButton(
+                MobileUi.browseIcon(
                         this,
                         R.drawable.action_search,
                         getString(R.string.action_search),
                         () -> SearchPresenter.instance(this).startSearch(null)),
                 new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
         top.addView(
-                MobileUi.iconButton(
+                MobileUi.browseIcon(
                         this,
                         R.drawable.ic_user,
                         getString(R.string.mobile_account),
@@ -47,8 +54,10 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
                 new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
         root.addView(top);
         HorizontalScrollView strip = new HorizontalScrollView(this);
+        sectionStrip = strip;
         chips = new LinearLayout(this);
         strip.setHorizontalScrollBarEnabled(false);
+        chips.setPaddingRelative(MobileUi.dp(this, 12), MobileUi.dp(this, 4), MobileUi.dp(this, 12), MobileUi.dp(this, 8));
         strip.addView(chips);
         root.addView(strip);
         content = MobileUi.column(this);
@@ -62,18 +71,17 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.addView(feed, new LinearLayout.LayoutParams(-1, -1));
         feed.setRetry(() -> presenter.refresh());
         LinearLayout tabs = new LinearLayout(this);
+        tabs.setPadding(MobileUi.dp(this, 6), MobileUi.dp(this, 8), MobileUi.dp(this, 6), MobileUi.dp(this, 8));
         tab(tabs, getString(R.string.header_home), MediaGroup.TYPE_HOME, R.drawable.icon_home);
         tab(
                 tabs,
                 getString(R.string.header_subscriptions),
                 MediaGroup.TYPE_SUBSCRIPTIONS,
                 R.drawable.icon_subscriptions);
-        tabs.addView(
-                MobileUi.navigationButton(
-                        this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou),
-                new LinearLayout.LayoutParams(0, MobileUi.dp(this, 64), 1));
-        root.addView(tabs);
-        setContentView(root);
+        youTab = MobileUi.browseNavigation(this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou);
+        MobileUi.addNavigation(tabs, youTab);
+        setContentView(new MobileNavigationShell(this, root, tabs));
+        requestedDestination = MobileNavigationShell.requestedDestination(state, getIntent());
         presenter.onViewInitialized();
         if (state != null) {
             int id = state.getInt("section", -1);
@@ -83,11 +91,33 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
             if (position != null) pendingScroll = position;
             if (state.getBoolean("you")) showYou();
         }
+        applyDestination();
+    }
+
+    private void applyDestination() {
+        if (requestedDestination == MobileNavigationShell.YOU) {
+            getIntent().removeExtra(MobileNavigationShell.DESTINATION);
+            requestedDestination = -1;
+            showYou();
+        } else if (sections.stream().anyMatch(s -> s.getId() == requestedDestination)) {
+            getIntent().removeExtra(MobileNavigationShell.DESTINATION);
+            int destination = requestedDestination;
+            requestedDestination = -1;
+            you = false;
+            presenter.selectSection(destination);
+        }
+    }
+
+    @Override protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        requestedDestination = intent.getIntExtra(MobileNavigationShell.DESTINATION, -1);
+        applyDestination();
     }
 
     private void tab(LinearLayout row, String title, int id, int icon) {
         Button button =
-                MobileUi.navigationButton(
+                MobileUi.browseNavigation(
                         this,
                         icon,
                         title,
@@ -96,42 +126,42 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
                             presenter.selectSection(id);
                         });
         tabs.put(id, button);
-        row.addView(button, new LinearLayout.LayoutParams(0, MobileUi.dp(this, 64), 1));
+        MobileUi.addNavigation(row, button);
     }
 
     private void rebuildChips() {
         if (chips == null) return;
         chips.removeAllViews();
+        sectionStrip.setVisibility(you ? android.view.View.GONE : android.view.View.VISIBLE);
+        if (youTab != null) MobileUi.navigationState(youTab, you);
         for (Map.Entry<Integer, Button> entry : tabs.entrySet()) {
             boolean enabled =
                     sections.stream().anyMatch(section -> section.getId() == entry.getKey());
             entry.getValue().setEnabled(enabled);
             entry.getValue().setAlpha(enabled ? 1f : 0.4f);
-            entry.getValue().setSelected(!you && selected == entry.getKey());
-            entry.getValue()
-                    .setTextColor(
-                            !you && selected == entry.getKey()
-                                    ? MobileUi.accent(this)
-                                    : android.graphics.Color.WHITE);
+            MobileUi.navigationState(entry.getValue(), enabled && !you && selected == entry.getKey());
         }
         for (BrowseSection s : sections) {
             if (s.getId() == MediaGroup.TYPE_SHORTS) continue;
             Button button =
-                    MobileUi.button(
+                    MobileUi.browseButton(
                             this,
                             s.getTitle(),
                             () -> {
                                 you = false;
                                 presenter.selectSection(s.getId());
                             });
-            button.setTextColor(
-                    selected == s.getId() ? MobileUi.accent(this) : android.graphics.Color.WHITE);
+            button.setSelected(!you && selected == s.getId());
             button.setOnLongClickListener(
                     v -> {
                         presenter.onSectionLongPressed(s.getId());
                         return true;
                     });
-            MobileUi.addButton(chips, button);
+            MobileUi.addBrowseButton(chips, button);
+            if (button.isSelected()) button.post(() -> {
+                if (button.getParent() == chips && button.isSelected())
+                    button.requestRectangleOnScreen(new android.graphics.Rect(0, 0, button.getWidth(), button.getHeight()), true);
+            });
         }
     }
 
@@ -142,11 +172,17 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.removeAllViews();
         ScrollView view = new ScrollView(this);
         LinearLayout items = MobileUi.column(this);
+        int padding = getResources().getDimensionPixelSize(R.dimen.mobile_page_padding);
+        items.setPadding(padding, padding, padding, padding);
         view.addView(items);
         content.addView(view);
         items.addView(MobileUi.text(this, getString(R.string.mobile_you), 24));
-        items.addView(
-                MobileUi.button(
+        com.liskovsoft.mediaserviceinterfaces.oauth.Account account =
+                com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.instance().getSelectedAccount();
+        if (account != null && account.getName() != null)
+            items.addView(MobileUi.text(this, account.getName(), 20));
+        MobileUi.addBrowseButton(items,
+                MobileUi.browseButton(
                         this,
                         getString(R.string.mobile_account),
                         () -> AccountSelectionPresenter.instance(this).show(true)));
@@ -154,8 +190,8 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
             if (s.getId() != MediaGroup.TYPE_HOME
                     && s.getId() != MediaGroup.TYPE_SHORTS
                     && s.getId() != MediaGroup.TYPE_SUBSCRIPTIONS)
-                items.addView(
-                        MobileUi.button(
+                MobileUi.addBrowseButton(items,
+                        MobileUi.browseButton(
                                 this,
                                 s.getTitle(),
                                 () -> {
@@ -174,6 +210,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         removeSection(s);
         sections.add(index >= 0 && index <= sections.size() ? index : sections.size(), s);
         rebuildChips();
+        chips.post(this::applyDestination);
     }
 
     @Override
@@ -228,6 +265,8 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.removeAllViews();
         ScrollView view = new ScrollView(this);
         settings = MobileUi.column(this);
+        int padding = MobileUi.dp(this, 16);
+        settings.setPadding(padding, padding, padding, padding);
         view.addView(settings);
         content.addView(view);
         for (SettingsItem i : g.getItems())
@@ -294,6 +333,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     protected void onResume() {
         super.onResume();
         if (presenter != null) presenter.onViewResumed();
+        if (youTab != null) MobileNavigationShell.accountAvatar(youTab);
     }
 
     @Override
