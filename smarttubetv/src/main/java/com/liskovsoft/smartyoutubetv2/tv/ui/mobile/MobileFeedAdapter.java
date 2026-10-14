@@ -152,6 +152,10 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
                 LayoutInflater.from(parent.getContext())
                         .inflate(compactCards ? R.layout.mobile_watch_video_card : R.layout.mobile_video_card, parent, false));
         card.image.setClipToOutline(true);
+        if (compactCards) {
+            MobileUi.browseFeedback(card.itemView, false);
+            MobileUi.pillTouchFeedback(card.menu);
+        }
         return card;
     }
 
@@ -174,6 +178,7 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
         Video v = (Video) rows.get(p);
         c.title.setText(v.getTitleFull());
         c.meta.setText(v.getSecondTitleFull());
+        if (c.channel != null) bindRecommendationMetadata(c, v);
         c.badge.setText(v.badge);
         c.badge.setVisibility(v.badge == null ? View.GONE : View.VISIBLE);
         Glide.with(c.image).load(v.getCardImageUrl()).centerCrop().into(c.image);
@@ -183,7 +188,27 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
                     menu.accept(v);
                     return true;
                 });
-        c.menu.setOnClickListener(view -> menu.accept(v));
+        c.menu.setOnClickListener(view -> {
+            MobileDialogActivity.requestPopup(view, v.getTitle());
+            menu.accept(v);
+        });
+    }
+
+    static void bindRecommendationMetadata(Card card, Video video) {
+        String author = video.getAuthor();
+        boolean hasAuthor = author != null && !author.trim().isEmpty();
+        card.channel.setText(hasAuthor ? author : "");
+        card.channel.setVisibility(hasAuthor ? View.VISIBLE : View.GONE);
+        CharSequence subtitle = video.getSecondTitleFull();
+        List<String> details = new ArrayList<>();
+        if (subtitle != null) {
+            for (String part : subtitle.toString().split("[•·]")) {
+                String text = part.trim();
+                if (!text.isEmpty() && (!hasAuthor || !text.equals(author.trim()))) details.add(text);
+            }
+        }
+        card.meta.setText(android.text.TextUtils.join(" · ", details));
+        card.meta.setVisibility(details.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override
@@ -205,13 +230,14 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
 
     static final class Card extends RecyclerView.ViewHolder {
         final ImageView image;
-        final TextView title, meta, badge;
+        final TextView title, channel, meta, badge;
         final View menu;
 
         Card(View v) {
             super(v);
             image = v.findViewById(R.id.mobile_thumbnail);
             title = v.findViewById(R.id.mobile_card_title);
+            channel = v.findViewById(R.id.mobile_card_channel);
             meta = v.findViewById(R.id.mobile_card_meta);
             badge = v.findViewById(R.id.mobile_duration);
             menu = v.findViewById(R.id.mobile_card_menu);

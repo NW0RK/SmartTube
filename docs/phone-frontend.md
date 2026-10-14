@@ -1,5 +1,59 @@
 # Phone frontend
 
+## Watch page scroll position — October 14, 2026
+
+The phone watch page starts at the top of its video details and no longer follows shared TV recommendation-focus callbacks when suggestions finish loading. Late recommendation updates preserve manual scrolling. Opening a different video resets the details header to an explicit zero offset, including when large text makes it taller than the viewport. Horizontal chapter focusing is retained.
+
+Validation: beta debug build and all 56 mobile tests passed, including regressions for late recommendation focus, manual scroll preservation, and resetting an oversized details header. Installed over the connected Galaxy A52 without clearing data; the loaded Big Buck Bunny page retained its title at the top with metadata, like count, and suggestions present. Manual scrolling worked; opening Me at the zoo afterward returned to the top and remained there with metadata and chapters loaded. APK and evidence are under `build/phone-validation/watch-top-*` and `build/phone-validation/NikoTube-watch-top-debug.apk`.
+
+## Video likes, share popup and comment interaction — October 14, 2026
+
+The mobile watch Like button shows the service's formatted count, including zero, with a localized accessibility label. Late metadata and like-state changes preserve the count; replacing the video clears it. The latest available count is retained for the current video even when the shared TV counter preference clears the model. Share uses the existing anchored popup and original link, QR and embed callbacks, with height sized to its content and bounded to the visible screen.
+
+Comments no longer dismiss on video touches or the temporary Activity pause during fullscreen transitions. The portrait panel starts below the measured video frame, and landscape reserves room beside the player so controls stay accessible. Layout changes preserve the comment view and scroll position. Back, close, watch navigation and video replacement still dismiss comments.
+
+Validation: all 54 mobile tests and the beta debug build passed with the bundled Java 11 runtime. Installed over the existing Galaxy A52 app without clearing data. At its existing 150% text size, verified formatted like counts, all three share choices, popup Back/outside dismissal, comment scrolling, play/pause, portrait and landscape seeking, and entering/exiting fullscreen with the same scrolled comments visible. A complete landscape seek moved playback from about 2:07 to 15:41. Video buffering during this pass does not establish sustained streaming reliability. Restored the phone's charging-screen setting after testing. Build/device logs and screenshots are under `build/phone-validation/video-interactions-*`; the final APK is `NikoTube-phone-interactions-debug.apk`.
+
+Build prerequisite: corrected an existing media-module compilation error by checking `tvMusicVideoRenderer` directly instead of calling the private `getMusicItem` helper; this preserves the existing music-date behavior and changes no public API.
+
+## Fullscreen control alignment - October 14, 2026
+
+Player controls now share 16dp horizontal gutters: the collapse button aligns with the timeline and timestamp, and settings aligns with fullscreen. Top-row buttons use consistent 48dp targets and an 8dp gap between captions and settings. Fullscreen adds 8dp edge clearance and symmetric side clearance for display cutouts in either landscape direction. Play/pause remains centered, and the fullscreen icon switches to inward corners when exiting fullscreen.
+
+Validation: Git whitespace checks passed for the changed player files. Beta build and unit tests were attempted but could not start because Java is absent from PATH and JAVA_HOME is unset. Compilation and visual/device verification remain pending; previously saved APKs and screenshots do not include this change.
+
+## You and Settings menus — October 14, 2026
+
+You now shows a 64dp circular account avatar, account name, and account-switch/sign-in action. History and Playlists use compact 48dp shortcuts with inline icons, side by side on ordinary phones, including at 150% text size. Narrow screens and text scaling of 180% or greater stack the shortcuts. Other enabled destinations retain their order as flat icon rows, with Settings separated visually. Account and section refreshes retain the You page and update its destinations.
+
+Settings has a page heading and full-width icon rows with separators. Ordinary submenus use muted category headings, wrapping labels and descriptions, trailing switches for single-switch choices, and native checkbox/radio controls. Comment sheets, chat, and anchored video popups retain their specialized styling. Existing callbacks, nested Back behavior, and stored preferences are preserved.
+
+Validation: beta debug build and all 50 mobile tests passed, including six menu regressions covering routing, account fallback, section refresh, 320dp/200% text/RTL layout, compact shortcuts at 150% text, and switch/checkbox/radio callbacks and nested Back. Installed over the existing Galaxy A52 app without clearing data. Visually checked the profile, compact 48dp shortcuts, Settings rows, and account submenu at the phone's existing 150% text size. Saved the APK, screenshots, and test logs under `build/phone-validation/`. Physical tablet, landscape, RTL, and 200% text checks remain pending; the automated suite covers narrow and tablet layouts.
+
+## Recommendations and video-action popup — October 14, 2026
+
+Recommended videos now use large 16:9 thumbnails with only the 48dp overflow target to their right. Titles and creator/view/date metadata appear underneath, inside the existing rounded recommendation surface. The three-dot action opens a bounded floating menu anchored to the selected card, with a compact title, Close button, scrollable options, and outside-touch dismissal. Existing service-backed video actions and nested choices remain available; the watch page stays visible and the player is not resized. Long-press and ordinary browse menus keep their existing behavior.
+
+The text column aligns exactly with the thumbnail edges and reserves the overflow column underneath as well. Titles wrap to three lines with end ellipsis; the channel has its own first metadata line, followed by views/upload date. Channel and statistics have separate spacing and typography, and missing metadata is cleared when recommendation cards are recycled.
+
+Validation: final beta debug build and all 40 mobile regression tests passed, including recommendation text/thumbnail alignment, metadata separation and recycling, popup action callbacks, and outside dismissal. Installed over the existing Galaxy A52 app without clearing data. Device inspection confirmed large thumbnails, channel/statistics separation, the compact floating menu, and dismissal to the same watch page. No new crash entries appeared during these checks. APK and screenshots are under `build/phone-validation/`.
+
+## Watch page surface styling — October 14, 2026
+
+The non-video portion of the watch page now shares the navigation and settings design: subtle shaded pill surfaces, thin borders, consistent touch feedback, and red selected-state accents. This includes video title/metadata, the channel and subscription row, Like/Dislike, Share, Download, Save, More, description, and comments entry. Recommendations use separate rounded cards with inset thumbnails and touchable overflow controls; chapters use matching surfaces with the existing active-chapter accent. Video controls and playback behavior remain unchanged.
+
+Validation: beta debug build and all 33 mobile regression tests passed. Installed over the Galaxy A52 app without clearing data, opened Big Buck Bunny, and visually checked the title/metadata, channel/subscription row, action pills, description/comments entry, and scrolling recommendation cards. No new crash-buffer entries appeared during the check. Final APK and screenshots are under `build/phone-validation/`.
+
+## NikoTube navigation and menus — October 14, 2026
+
+Visible mobile branding and app labels now use NikoTube. Home, Subscriptions, and You retain the translucent rounded capsule, red selection accent, and accessible destination names, with centered 24dp icons in 48dp targets and no visible subtext. The selected surface and touch ripple use the same pill outline. Scrollable content extends behind the capsule; internal bottom padding keeps the last items accessible without reserving an empty strip. Keyboard hiding and system insets remain supported.
+
+Settings and browse actions share shaded rounded surfaces, subtle borders, consistent spacing, and clearer section headings and descriptions. Settings entries include their existing icons and a forward chevron. Toolbar action separators distinguish back, search, voice, account, and playback actions.
+
+Comments have an opaque charcoal panel with rounded corners, author avatars, row dividers, outlined/filled drawn hearts, and pill-shaped reply actions. Portrait comments remain a bottom sheet; landscape/fullscreen comments use a bounded panel on the physical right. Rotation updates the same window. Outside taps dismiss comments, and leaving the player or opening browse/search/channel/uploads closes any remaining comments panel. Ordinary settings menus retain modal behavior.
+
+Validation: final beta debug APK built successfully and all 33 mobile regression tests passed, including content scrolling behind navigation, fullscreen/right-panel rotation and reply navigation, outside dismissal, and comments cleanup. Installed the final build over the existing Galaxy A52 beta app without clearing data. Earlier device inspection verified content visible behind the capsule and identified the toolbar-index crash; the final title lookup uses a stable view ID and the corrected player opens successfully. Full visual acceptance of final settings, fullscreen comments, and every device/font-scale combination remains pending. The current installable artifact is `build/phone-validation/NikoTube-phone-debug.apk`.
+
 ## Reference-led mobile redesign — October 13, 2026
 
 The phone interface now shares a black background, charcoal surfaces, red accents, 16dp page gutters and thumbnail corners, 18sp feed titles, readable secondary text, and rounded touch controls. Home has a compact SmartTube brand header; Home, Subscriptions and You use outlined navigation icons, visible labels, account imagery when available, and a floating translucent capsule. Channels and uploads share this navigation. Content clearance follows the measured bar height and system insets; the bar hides during keyboard entry and returns afterward. Search, You, watch details, comments, settings, sign-in, device linking and browser toolbars use the shared styling.
@@ -130,3 +184,15 @@ Removed the previous and next buttons from the watch-page control row. Elapsed/t
 The buffering overlay uses playback waiting states instead of general loading/prefetch activity. It starts hidden, waits 750 ms before showing a sustained playback wait, and cancels when playback is ready or stops. Loading recommendations while video is ready does not display the central spinner. Three regression tests cover background loading and brief stalls, prolonged buffering and recovery, and initial loading/teardown cancellation; all sixteen tests passed.
 
 Installed the updated debug build on the Galaxy A52 and verified the controls, normal playback advancing to 0:59, and no buffering overlay after the video was ready. Returned to browsing after testing. The refreshed APK is in `build/phone-validation/SmartTube-phone-debug.apk`.
+
+## Rounded player and controls — October 14, 2026
+
+The watch-page video frame clips video and overlays to 20dp rounded corners, including while details scroll beneath it. Fullscreen and PiP keep their full rectangular frame. Player buttons use compact pill surfaces, centered icons, red pressed feedback, and a red border for selected captions. The buffering wheel is explicitly white. At the user's request, rewind and forward buttons are removed; play/pause sits alone in the center. Timeline dragging and double-tap seeking remain available.
+
+Validation of the initial styling: beta debug build and all 34 mobile regression tests passed. Installed over the existing Galaxy A52 app without clearing data; confirmed rounded corners while scrolling and fullscreen/Back. Screenshots, layout dumps, build logs, and the updated `NikoTube-phone-debug.apk` are under `build/phone-validation/`.
+
+### Seeking polish
+
+The timeline has a 48dp touch area with a rounded 4dp track, a separate buffered track, and small segment markers below it. During dragging the track and thumb expand, a thumbnail/time card follows the thumb and stays within the player edges, and play/pause hides to make room. Taps seek immediately; dragging commits once on release and preserves the previous playback state. Canceling restores the original position. Controls remain visible throughout a drag, outdated thumbnail callbacks are ignored, and keyboard/accessibility position adjustments commit without requiring a touch release.
+
+Validation: beta debug build and all 40 mobile tests passed, including four new tests for immediate touch updates, commit callbacks, cancellation, bounds, disabled controls, and accessibility adjustment. On the Galaxy A52, verified an off-track tap within the enlarged target seeks to 2:38, dragging commits at 7:25, a thumbnail preview tracks the finger, a five-second hold keeps controls visible, and cancellation restores 7:25. The updated app is installed without clearing data; evidence and APK remain under `build/phone-validation/`.

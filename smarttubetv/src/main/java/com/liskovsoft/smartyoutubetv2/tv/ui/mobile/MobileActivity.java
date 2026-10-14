@@ -80,6 +80,7 @@ public abstract class MobileActivity extends MotherActivity {
                 || this instanceof MobileSearchActivity
                 || this instanceof MobileChannelActivity
                 || this instanceof MobileUploadsActivity) {
+            MobileDialogActivity.dismissComments(this);
             com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
                     com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(
                                     this)

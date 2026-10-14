@@ -102,6 +102,7 @@ public class MobilePlaybackActivity extends MobileActivity {
 
     @Override
     public void finish() {
+        MobileDialogActivity.dismissComments(this);
         if (!stopped) {
             stopped = true;
             if (fragment != null) fragment.stopPlayback();

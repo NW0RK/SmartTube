@@ -23,6 +23,24 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private AppDialogPresenter presenter;
     private LinearLayout root, body;
     private ScrollView scroller;
+    private LinearLayout commentPanel;
+    private View commentHandle;
+    private static PopupRequest pendingPopup;
+    private android.graphics.Rect popupAnchor;
+
+    private static final class PopupRequest {
+        final java.lang.ref.WeakReference<View> anchor;
+        final String title;
+
+        PopupRequest(View anchor, String title) {
+            this.anchor = new java.lang.ref.WeakReference<>(anchor);
+            this.title = title;
+        }
+    }
+
+    static void requestPopup(View anchor, String title) {
+        pendingPopup = new PopupRequest(anchor, title);
+    }
     private final Deque<Page> backstack = new ArrayDeque<>();
     private Page page;
     private boolean paused, closing;
@@ -67,6 +85,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     }
 
     private boolean hasComments() {
+        if (page == null) return false;
         for (OptionCategory category : page.categories)
             if (category.type == OptionCategory.TYPE_COMMENTS) return true;
         return false;
@@ -75,6 +94,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) popupAnchor = state.getParcelable("popup_anchor");
         root = MobileUi.column(this);
         setContentView(root);
         presenter = AppDialogPresenter.instance(this);
@@ -90,6 +110,20 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
             boolean transparent,
             boolean overlay,
             int id) {
+        if (pendingPopup != null) {
+            PopupRequest request = pendingPopup;
+            pendingPopup = null;
+            View anchor = request.anchor.get();
+            if (Objects.equals(request.title, title == null ? null : title.toString()) && anchor != null) {
+                android.graphics.Rect bounds = new android.graphics.Rect();
+                if (anchor.getGlobalVisibleRect(bounds)) {
+                    int[] position = new int[2];
+                    anchor.getLocationOnScreen(position);
+                    bounds.set(position[0], position[1], position[0] + anchor.getWidth(), position[1] + anchor.getHeight());
+                    popupAnchor = bounds;
+                }
+            }
+        }
         if (page != null) backstack.push(page);
         detachReceivers();
         page =
@@ -106,24 +140,33 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         optionButtons.clear();
         root.removeAllViews();
         boolean commentSheet = hasComments();
+        boolean ordinaryMenu = !commentSheet && popupAnchor == null
+                && page.categories.stream().noneMatch(category -> category.type == OptionCategory.TYPE_CHAT);
+        commentPanel = null;
+        commentHandle = null;
         updateWindow(commentSheet);
         root.setBackgroundColor(commentSheet ? Color.TRANSPARENT : MobileUi.background(this));
+        root.setClipToOutline(commentSheet || popupAnchor != null);
+        if (!commentSheet && popupAnchor != null) {
+            android.graphics.drawable.GradientDrawable surface = MobileUi.rounded(this, getColor(R.color.mobile_surface));
+            surface.setCornerRadius(MobileUi.dp(this, 28));
+            surface.setStroke(MobileUi.dp(this, 1), getColor(R.color.mobile_divider));
+            root.setBackground(surface);
+        }
         LinearLayout panel = root;
         if (commentSheet) {
             panel = MobileUi.column(this);
-            android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
-            background.setColor(getColor(R.color.mobile_surface));
-            float radius = MobileUi.dp(this, 24);
-            background.setCornerRadii(new float[] {radius, radius, radius, radius, 0, 0, 0, 0});
-            panel.setBackground(background);
+            commentPanel = panel;
             panel.setClipToOutline(true);
             root.addView(panel, new LinearLayout.LayoutParams(-1, 0, 1));
             View handle = new View(this);
+            commentHandle = handle;
             handle.setBackground(MobileUi.rounded(this, 0xff5a5e66));
             LinearLayout.LayoutParams grip = new LinearLayout.LayoutParams(MobileUi.dp(this, 36), MobileUi.dp(this, 4));
             grip.gravity = Gravity.CENTER_HORIZONTAL;
             grip.setMargins(0, MobileUi.dp(this, 10), 0, MobileUi.dp(this, 6));
             panel.addView(handle, grip);
+            updateCommentPanel();
             LinearLayout header = new LinearLayout(this);
             header.setGravity(Gravity.CENTER_VERTICAL);
             TextView heading = MobileUi.text(this, getString(R.string.mobile_watch_comments), 20);
@@ -138,23 +181,49 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
             View divider = new View(this);
             divider.setBackgroundColor(getColor(R.color.mobile_feedback));
             panel.addView(divider, new LinearLayout.LayoutParams(-1, MobileUi.dp(this, 1)));
+        } else if (popupAnchor != null) {
+            LinearLayout header = new LinearLayout(this);
+            header.setGravity(Gravity.CENTER_VERTICAL);
+            header.setPadding(MobileUi.dp(this, 12), MobileUi.dp(this, 8), MobileUi.dp(this, 8), 0);
+            TextView heading = MobileUi.text(this, page.title, 14);
+            heading.setTypeface(null, android.graphics.Typeface.BOLD);
+            heading.setMaxLines(2);
+            heading.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            heading.setPadding(MobileUi.dp(this, 4), MobileUi.dp(this, 8), MobileUi.dp(this, 8), MobileUi.dp(this, 8));
+            header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
+            Button close = MobileUi.button(this, "", this::finish);
+            MobileUi.centerIcon(close, "close", 20);
+            MobileUi.pillTouchFeedback(close);
+            close.setContentDescription(getString(R.string.mobile_video_options_close));
+            header.addView(close, new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
+            panel.addView(header);
         } else panel.addView(
                 MobileUi.toolbar(
-                        this, page.title == null ? "SmartTube" : page.title, this::onBackPressed));
+                        this, page.title == null ? getString(R.string.mobile_brand_name)
+                                : page.title.toString().replace("SmartTube", "NikoTube"), this::onBackPressed));
         scroller = new ScrollView(this);
         body = MobileUi.column(this);
         body.setPadding(MobileUi.dp(this, 12), MobileUi.dp(this, 8), MobileUi.dp(this, 12), MobileUi.dp(this, 16));
-        body.setPadding(MobileUi.dp(this, 12), MobileUi.dp(this, 8), MobileUi.dp(this, 12), MobileUi.dp(this, 16));
+        if (ordinaryMenu) body.setPadding(0, 0, 0, MobileUi.dp(this, 24));
         if (commentSheet) {
             body.setBackgroundColor(Color.TRANSPARENT);
             body.setPadding(0, MobileUi.dp(this, 8), 0, MobileUi.dp(this, 16));
             scroller.setVerticalScrollBarEnabled(false);
         }
         scroller.addView(body);
+        if (popupAnchor != null && !commentSheet) body.setBackgroundColor(Color.TRANSPARENT);
         panel.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
+        boolean firstCategory = true;
         for (OptionCategory category : page.categories) {
-            if (category.title != null && category.type != OptionCategory.TYPE_COMMENTS)
-                body.addView(MobileUi.text(this, category.title, 18));
+            if (ordinaryMenu && !firstCategory) MobileUi.menuDivider(body);
+            firstCategory = false;
+            if (category.title != null && category.type != OptionCategory.TYPE_COMMENTS) {
+                TextView heading = MobileUi.text(this, category.title, 13);
+                heading.setTextColor(ordinaryMenu ? getColor(R.color.mobile_text_secondary) : MobileUi.accent(this));
+                heading.setTypeface(null, android.graphics.Typeface.BOLD);
+                heading.setPaddingRelative(MobileUi.dp(this, ordinaryMenu ? 16 : 4), MobileUi.dp(this, 24), MobileUi.dp(this, 16), MobileUi.dp(this, 8));
+                body.addView(heading);
+            }
             if (category.options == null) continue;
             if (category.type == OptionCategory.TYPE_RADIO_LIST) {
                 RadioGroup radio = new RadioGroup(this);
@@ -162,8 +231,8 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                 for (OptionItem item : category.options) {
                     RadioButton button = new RadioButton(this);
                     button.setText(label(item));
-                    button.setTextColor(Color.WHITE);
-                    button.setMinHeight(MobileUi.dp(this, 48));
+                    if (ordinaryMenu) MobileUi.menuControl(button);
+                    else MobileUi.settingsControl(button);
                     button.setId(android.view.View.generateViewId());
                     radio.addView(button);
                     optionButtons.put(item, button);
@@ -181,10 +250,11 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                 for (OptionItem item : category.options) {
                     if (category.type == OptionCategory.TYPE_CHECKBOX_LIST
                             || category.type == OptionCategory.TYPE_SINGLE_SWITCH) {
-                        CheckBox button = new CheckBox(this);
+                        CompoundButton button = ordinaryMenu && category.type == OptionCategory.TYPE_SINGLE_SWITCH
+                                ? new Switch(this) : new CheckBox(this);
                         button.setText(label(item));
-                        button.setTextColor(Color.WHITE);
-                        button.setMinHeight(MobileUi.dp(this, 48));
+                        if (ordinaryMenu) MobileUi.menuControl(button);
+                        else MobileUi.settingsControl(button);
                         optionButtons.put(item, button);
                         button.setChecked(item.isSelected());
                         body.addView(button);
@@ -204,9 +274,15 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                         bindComments(item.getCommentsReceiver());
                     else if (category.type == OptionCategory.TYPE_CHAT
                             && item.getChatReceiver() != null) bindChat(item.getChatReceiver());
-                    else body.addView(MobileUi.button(this, label(item), () -> select(item, true)));
+                    else {
+                        Button option = MobileUi.button(this, label(item), () -> select(item, true));
+                        if (ordinaryMenu) MobileUi.menuControl(option);
+                        else MobileUi.settingsControl(option);
+                        body.addView(option);
+                    }
                 }
         }
+        if (popupAnchor != null && !commentSheet) updateWindow(false);
     }
 
     private void updateWindow(boolean commentSheet) {
@@ -214,31 +290,117 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         // directly to the watch window, including complete seek gestures.
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.width = WindowManager.LayoutParams.MATCH_PARENT;
+        params.x = params.y = 0;
         params.gravity = commentSheet ? Gravity.BOTTOM : Gravity.TOP;
         if (commentSheet) {
-            int screenHeight = getResources().getDisplayMetrics().heightPixels;
-            int videoHeight = Math.min(screenHeight / 2,
-                    getResources().getDisplayMetrics().widthPixels * 9 / 16 + MobileUi.dp(this, 56));
-            params.height = screenHeight - videoHeight;
-            params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            android.util.DisplayMetrics metrics = new android.util.DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getRealMetrics(metrics);
+            if (fullscreenComments()) {
+                params.width = Math.min(MobileUi.dp(this, 400), metrics.widthPixels / 2);
+                params.height = WindowManager.LayoutParams.MATCH_PARENT;
+                params.gravity = Gravity.RIGHT | Gravity.TOP;
+            } else {
+                int videoHeight = Math.min(metrics.heightPixels / 2,
+                        metrics.widthPixels * 9 / 16 + MobileUi.dp(this, 56));
+                com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
+                        com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(this).getPlayer();
+                if (player instanceof MobilePlaybackFragment) {
+                    int bottom = ((MobilePlaybackFragment) player).getVideoBottomOnScreen();
+                    if (bottom > 0 && bottom < metrics.heightPixels) videoHeight = bottom;
+                }
+                params.height = metrics.heightPixels - videoHeight;
+            }
+            params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        } else if (popupAnchor != null) {
+            android.graphics.Rect visible = new android.graphics.Rect();
+            getWindow().getDecorView().getWindowVisibleDisplayFrame(visible);
+            if (visible.isEmpty()) visible.set(0, 0, getResources().getDisplayMetrics().widthPixels,
+                    getResources().getDisplayMetrics().heightPixels);
+            int gap = MobileUi.dp(this, 8);
+            params.width = Math.min(MobileUi.dp(this, 320), visible.width() - gap * 2);
+            params.height = Math.min(MobileUi.dp(this, 520), visible.height() * 2 / 3);
+            if (root.getChildCount() > 0) {
+                root.measure(View.MeasureSpec.makeMeasureSpec(params.width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                params.height = Math.min(params.height, root.getMeasuredHeight());
+            }
+            params.gravity = Gravity.TOP | Gravity.LEFT;
+            params.x = Math.max(visible.left + gap, Math.min(popupAnchor.right - params.width, visible.right - params.width - gap));
+            int below = popupAnchor.bottom + gap;
+            params.y = below + params.height <= visible.bottom - gap ? below
+                    : Math.max(visible.top + gap, popupAnchor.top - params.height - gap);
+            params.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
         } else {
             params.height = WindowManager.LayoutParams.MATCH_PARENT;
-            params.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            params.flags &= ~(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH);
         }
         getWindow().setAttributes(params);
-        setFinishOnTouchOutside(false);
+        getWindow().getDecorView().setSystemUiVisibility(commentSheet && fullscreenComments()
+                ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY : 0);
+        setFinishOnTouchOutside(!commentSheet && popupAnchor != null);
+        updatePlayerCommentsWidth(commentSheet && fullscreenComments() ? params.width : 0);
+    }
+
+    private void updatePlayerCommentsWidth(int width) {
+        com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
+                com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(this).getPlayer();
+        if (player instanceof MobilePlaybackFragment)
+            ((MobilePlaybackFragment) player).setCommentsPanelWidth(width);
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent event) {
+        if (hasComments() && event.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) return true;
+        return super.onTouchEvent(event);
+    }
+
+    private boolean fullscreenComments() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    private void updateCommentPanel() {
+        if (commentPanel == null) return;
+        float radius = MobileUi.dp(this, 24);
+        android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{getColor(R.color.mobile_surface), getColor(R.color.mobile_player_panel)});
+        background.setStroke(MobileUi.dp(this, 1), getColor(R.color.mobile_divider));
+        background.setCornerRadii(fullscreenComments()
+                ? new float[]{radius, radius, 0, 0, 0, 0, radius, radius}
+                : new float[]{radius, radius, radius, radius, 0, 0, 0, 0});
+        // Paint the whole sheet window and extend its outline past the bottom edge.
+        // Keep the watch page covered without a visible seam beneath the comments.
+        android.graphics.drawable.LayerDrawable surface = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{background});
+        surface.setLayerInset(0, 0, 0, 0, -MobileUi.dp(this, 1));
+        root.setBackground(surface);
+        commentPanel.setBackgroundColor(Color.TRANSPARENT);
+        commentHandle.setVisibility(fullscreenComments() ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
-        if (page != null) updateWindow(hasComments());
+        if (page != null) {
+            updateWindow(hasComments());
+            updateCommentPanel();
+        }
     }
 
     private CharSequence label(OptionItem item) {
-        return item.getDescription() == null
-                ? item.getTitle()
-                : android.text.TextUtils.concat(item.getTitle(), "\n", item.getDescription());
+        String title = item.getTitle() == null ? "" : item.getTitle().toString().replace("SmartTube", "NikoTube");
+        if (item.getDescription() == null) return title;
+        android.text.SpannableString text = new android.text.SpannableString(
+                title + "\n" + item.getDescription());
+        text.setSpan(new android.text.style.ForegroundColorSpan(getColor(R.color.mobile_text_secondary)),
+                title.length(), text.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.setSpan(new android.text.style.RelativeSizeSpan(0.85f),
+                title.length(), text.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return text;
     }
 
     private boolean select(OptionItem item, boolean checked) {
@@ -340,8 +502,10 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
 
     private void appendLoadMore(CommentsReceiver receiver, CommentGroup group) {
         Button more = MobileUi.button(this, getString(R.string.mobile_comments_more), () -> {});
-        more.setTextColor(0xff83baff);
-        more.setBackground(MobileUi.rounded(this, 0xff252932));
+        more.setTextColor(Color.WHITE);
+        more.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(getColor(R.color.mobile_feedback)),
+                MobileUi.pillSurface(this), null));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, MobileUi.dp(this, 48));
         params.setMargins(MobileUi.dp(this, 16), MobileUi.dp(this, 8), MobileUi.dp(this, 16), 0);
         body.addView(more, params);
@@ -361,16 +525,23 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         int authorEnd = author.length();
         text.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, authorEnd, 0);
         int dateEnd = label.indexOf('\n');
-        text.setSpan(new android.text.style.ForegroundColorSpan(0xffaaaaaa), authorEnd, dateEnd, 0);
+        text.setSpan(new android.text.style.ForegroundColorSpan(getColor(R.color.mobile_text_secondary)), authorEnd, dateEnd, 0);
         text.setSpan(new android.text.style.RelativeSizeSpan(0.85f), 0, dateEnd, 0);
         return text;
     }
 
     private void updateCommentLike(Button button, CommentItem item) {
-        button.setText((item.isLiked() ? "♥" : "♡")
-                + (item.getLikeCount() == null ? "" : "  " + item.getLikeCount()));
-        button.setTextColor(item.isLiked() ? 0xffff7890 : 0xffb8bdc7);
+        button.setText(item.getLikeCount() == null ? "" : item.getLikeCount());
+        int color = getColor(item.isLiked() ? R.color.mobile_comment_heart : R.color.mobile_text_secondary);
+        MobilePlayerIcon heart = new MobilePlayerIcon(item.isLiked() ? "heart-filled" : "heart");
+        heart.setBounds(0, 0, MobileUi.dp(this, 20), MobileUi.dp(this, 20));
+        heart.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
+        button.setCompoundDrawablesRelative(heart, null, null, null);
+        button.setCompoundDrawablePadding(MobileUi.dp(this, 8));
+        button.setTextColor(color);
         button.setSelected(item.isLiked());
+        button.setContentDescription(getString(item.isLiked()
+                ? R.string.mobile_comments_unlike : R.string.mobile_comments_like));
     }
 
     private void appendComment(CommentItem item, CommentsReceiver receiver) {
@@ -381,7 +552,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         LinearLayout row = new LinearLayout(this);
         row.setPadding(MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 16), MobileUi.dp(this, 8));
         ImageView photo = new ImageView(this);
-        photo.setBackground(MobileUi.rounded(this, 0xff30343c));
+        photo.setBackground(MobileUi.rounded(this, getColor(R.color.mobile_surface)));
         photo.setClipToOutline(true);
         row.addView(photo, new LinearLayout.LayoutParams(MobileUi.dp(this, 40), MobileUi.dp(this, 40)));
         Glide.with(this).load(item.getAuthorPhoto()).circleCrop().into(photo);
@@ -403,17 +574,27 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         content.addView(actions);
         Button like = MobileUi.button(this, "", () -> receiver.onCommentLongClicked(commentItems.get(item.getId())));
         updateCommentLike(like, item);
-        like.setContentDescription(getString(R.string.mobile_comments_like));
-        like.setBackgroundColor(Color.TRANSPARENT);
+        like.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(getColor(R.color.mobile_feedback)),
+                MobileUi.rounded(this, Color.TRANSPARENT), null));
         actions.addView(like, new LinearLayout.LayoutParams(-2, MobileUi.dp(this, 48)));
         if (item.getNestedCommentsKey() != null && item.getReplyCount() != null) {
             Button replies = MobileUi.button(this, item.getReplyCount() + "  ›",
                     () -> receiver.onCommentClicked(commentItems.get(item.getId())));
-            replies.setTextColor(0xff83baff);
-            replies.setBackgroundColor(Color.TRANSPARENT);
+            replies.setTextColor(Color.WHITE);
+            MobilePlayerIcon arrow = new MobilePlayerIcon("chevron-right");
+            arrow.setBounds(0, 0, MobileUi.dp(this, 16), MobileUi.dp(this, 16));
+            replies.setText(item.getReplyCount());
+            replies.setCompoundDrawablesRelative(null, null, arrow, null);
+            replies.setCompoundDrawablePadding(MobileUi.dp(this, 6));
             actions.addView(replies, new LinearLayout.LayoutParams(-2, MobileUi.dp(this, 48)));
         }
         body.addView(row);
+        View divider = new View(this);
+        divider.setBackgroundColor(getColor(R.color.mobile_divider));
+        LinearLayout.LayoutParams separator = new LinearLayout.LayoutParams(-1, MobileUi.dp(this, 1));
+        separator.setMargins(MobileUi.dp(this, 16), 0, MobileUi.dp(this, 16), 0);
+        body.addView(divider, separator);
         commentViews.put(item.getId(), text);
         commentLikes.put(item.getId(), like);
     }
@@ -481,13 +662,13 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
 
     @Override
     public boolean isTransparent() {
-        return page != null && (page.transparent || hasComments());
+        return page != null && (page.transparent || hasComments() || popupAnchor != null);
     }
 
     @Override
     public boolean isOverlay() {
         // The portrait player is already above the sheet; TV dialog fitting would shrink it.
-        return page != null && (page.overlay || hasComments());
+        return page != null && (page.overlay || hasComments() || popupAnchor != null);
     }
 
     @Override
@@ -509,13 +690,39 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     @Override
     protected void onPause() {
         paused = true;
+        // Fullscreen can temporarily pause this window while the watch Activity rotates.
+        // Watch navigation, video replacement and explicit dismissal own comment closure.
+        if (page != null && !hasComments() && popupAnchor != null && !isChangingConfigurations()) finish();
         super.onPause();
+    }
+
+    static void dismissComments(android.content.Context context) {
+        AppDialogView dialog = AppDialogPresenter.instance(context).getView();
+        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).hasComments())
+            dialog.finish();
+    }
+
+    static void updateCommentsLayout(android.content.Context context) {
+        AppDialogView dialog = AppDialogPresenter.instance(context).getView();
+        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).hasComments()
+                && !((MobileDialogActivity) dialog).closing) {
+            MobileDialogActivity sheet = (MobileDialogActivity) dialog;
+            sheet.updateWindow(true);
+            sheet.updateCommentPanel();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        if (popupAnchor != null) state.putParcelable("popup_anchor", popupAnchor);
     }
 
     @Override
     public void finish() {
         if (closing) return;
         closing = true;
+        updatePlayerCommentsWidth(0);
         detachReceivers();
         presenter.onFinish();
         super.finish();

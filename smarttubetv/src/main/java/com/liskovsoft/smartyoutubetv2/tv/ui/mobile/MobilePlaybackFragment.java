@@ -32,8 +32,9 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     private FrameLayout controls;
     private ChatReceiver chatReceiver;
     private FrameLayout stage, debug;
+    private LinearLayout seekPreview;
     private MobileFeedView suggestions;
-    private TextView title, meta, time, quality, seekTitle, description;
+    private TextView title, meta, time, quality, seekTitle;
     private LinearLayout chapters;
     private VideoGroup chapterGroup;
     private HorizontalScrollView chapterScroll;
@@ -55,6 +56,8 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     private final Map<Integer, Integer> states = new HashMap<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean dragging, wasPlaying, playbackFinished;
+    private long seekDuration;
+    private int previewRequest, previewIndex = -1;
     private String restoredId;
     private Video restoredVideo;
     private long restoredPosition;
@@ -67,12 +70,14 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                         seek.setProgress(
                                 duration > 0 ? (int) (getPositionMs() * 10000 / duration) : 0);
                         time.setText(clock(getPositionMs()) + " / " + clock(duration));
+                        seek.setSecondaryProgress(duration > 0 && mPlayer != null
+                                ? (int) Math.min(10000, Math.max(0, mPlayer.getBufferedPosition()) * 10000 / duration) : 0);
                     }
                     setIcon(play, getPlayWhenReady() ? "pause" : "play", 30);
                     root.setKeepScreenOn(isPlaying() && !isInPIPMode());
                     overlay.seekSeconds(getPlayerData().getSeekIncrementMs() / 1000);
                     if (isPlaying()) poster.setVisibility(View.GONE);
-                    seek.setEnabled(mPlayer != null && mPlayer.isCurrentWindowSeekable());
+                    if (!dragging) seek.setEnabled(duration > 0 && mPlayer != null && mPlayer.isCurrentWindowSeekable());
                     updateBufferingIndicator();
                     updateChapterSelection();
                     handler.postDelayed(this, 500);
@@ -132,6 +137,8 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             return;
         }
         if (getButtonState(id) == BUTTON_DISABLED) return;
+        if (id == R.id.action_share && getVideo() != null && buttons.get(id) != null)
+            MobileDialogActivity.requestPopup(buttons.get(id), getVideo().getTitle());
         if (id == R.id.lb_control_closed_captioning) {
             toggleCaptions();
             return;
@@ -171,7 +178,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         Button b = MobileUi.button(requireContext(), "", click);
         b.setMinimumWidth(MobileUi.dp(requireContext(), 48));
         b.setContentDescription(label);
-        b.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.playerFeedback(b);
         setIcon(b, icon, 24);
         b.setLayoutParams(new LinearLayout.LayoutParams(
                 MobileUi.dp(requireContext(), 48), MobileUi.dp(requireContext(), 48)));
@@ -184,15 +191,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         icon.setBounds(0, 0, size, size);
         button.setCompoundDrawables(icon, null, null, null);
         button.setCompoundDrawablePadding(MobileUi.dp(requireContext(), 8));
-        button.setBackground(round(requireContext().getColor(R.color.mobile_surface), 24));
-    }
-
-    private void skip(long delta) {
-        if (mPlayer == null || !mPlayer.isCurrentWindowSeekable()) return;
-        long position = Math.max(0, Math.min(getDurationMs(), getPositionMs() + delta));
-        setPositionMs(position);
-        mPlaybackPresenter.onSeekPositionChanged(position);
-        mPlaybackPresenter.onSeekEnd();
+        MobileUi.browseFeedback(button, true);
     }
 
     private void updateChapterSelection() {
@@ -206,7 +205,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         if (selected == activeChapter) return;
         activeChapter = selected;
         for (int i = 0; i < chapterCards.size(); i++) {
-            android.graphics.drawable.GradientDrawable border = round(requireContext().getColor(R.color.mobile_surface), 8);
+            android.graphics.drawable.GradientDrawable border = round(requireContext().getColor(R.color.mobile_surface), 16);
             if (i == selected) border.setStroke(MobileUi.dp(requireContext(), 2), MobileUi.accent(requireContext()));
             chapterCards.get(i).setBackground(border);
         }
@@ -217,16 +216,22 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         root = MobileUi.column(requireContext());
         root.setBackgroundColor(MobileUi.background(requireContext()));
         bar =
-                MobileUi.watchToolbar(
-                        requireContext(), () -> requireActivity().onBackPressed());
+                MobileUi.watchToolbar(requireContext());
         root.addView(bar);
-        bar.setBackgroundColor(MobileUi.background(requireContext()));
-        TextView brand = (TextView) bar.getChildAt(1);
+        TextView brand = bar.findViewById(R.id.mobile_toolbar_title);
         brand.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         brand.setTypeface(null, android.graphics.Typeface.BOLD);
         MobileUi.addButton(bar, iconButton("search", "Search", () -> action(R.id.action_search)));
+        MobileUi.addSeparator(bar);
         MobileUi.addButton(bar, iconButton("more", "Playback options", this::playbackOptions));
         stage = (FrameLayout) inflater.inflate(R.layout.mobile_player_stage, parent, false);
+        stage.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                        MobileUi.dp(view.getContext(), 20));
+            }
+        });
+        stage.setClipToOutline(true);
         surface = stage.findViewById(R.id.mobile_player_surface);
         surface.setUseController(false);
         poster = new ImageView(requireContext());
@@ -239,17 +244,27 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[] {0x66000000, 0x22000000, 0x99000000});
         controls.setBackground(shade);
+        controls.setOnApplyWindowInsetsListener((view, insets) -> {
+            updateControlInsets(insets);
+            return insets;
+        });
         stage.addView(controls, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout top = new LinearLayout(requireContext());
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.setPadding(MobileUi.dp(requireContext(), 8), 0, MobileUi.dp(requireContext(), 8), 0);
-        MobileUi.addButton(top, iconButton("down", "Close player", () -> requireActivity().onBackPressed()));
+        top.setPaddingRelative(MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 4),
+                MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 4));
+        top.addView(iconButton("down", "Close player", () -> requireActivity().onBackPressed()));
         top.addView(new View(requireContext()), new LinearLayout.LayoutParams(0, 1, 1));
         Button captions = actionButton(top, R.id.lb_control_closed_captioning, "CC");
-        captions.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.playerFeedback(captions);
+        captions.setPadding(0, 0, 0, 0);
+        LinearLayout.LayoutParams captionParams = new LinearLayout.LayoutParams(
+                MobileUi.dp(requireContext(), 48), MobileUi.dp(requireContext(), 48));
+        captionParams.setMarginEnd(MobileUi.dp(requireContext(), 8));
+        captions.setLayoutParams(captionParams);
         captions.setTypeface(null, android.graphics.Typeface.BOLD);
         Button settings = iconButton("settings", "Playback settings", this::settings);
-        MobileUi.addButton(top, settings);
+        top.addView(settings);
         controls.addView(top, new FrameLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 56), Gravity.TOP));
         play =
                 MobileUi.button(
@@ -262,24 +277,16 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                         });
         play.setContentDescription(getString(R.string.mobile_play_pause));
         setIcon(play, "play", 30);
-        play.setBackground(round(0x55000000, 36));
-        LinearLayout transport = new LinearLayout(requireContext());
-        transport.setGravity(Gravity.CENTER);
-        Button rewind = iconButton("back10", getString(R.string.mobile_watch_rewind), () -> skip(-10000));
-        Button forward = iconButton("forward10", getString(R.string.mobile_watch_forward), () -> skip(10000));
-        setIcon(rewind, "back10", 32);
-        setIcon(forward, "forward10", 32);
-        transport.addView(rewind, new LinearLayout.LayoutParams(MobileUi.dp(requireContext(), 64), -1));
-        LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(
-                MobileUi.dp(requireContext(), 64), MobileUi.dp(requireContext(), 64));
-        playParams.setMargins(MobileUi.dp(requireContext(), 20), 0, MobileUi.dp(requireContext(), 20), 0);
-        transport.addView(play, playParams);
-        transport.addView(forward, new LinearLayout.LayoutParams(MobileUi.dp(requireContext(), 64), -1));
-        controls.addView(transport, new FrameLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 64), Gravity.CENTER));
+        MobileUi.playerFeedback(play);
+        controls.addView(play, new FrameLayout.LayoutParams(
+                MobileUi.dp(requireContext(), 56), MobileUi.dp(requireContext(), 56), Gravity.CENTER));
         LinearLayout bottom = new LinearLayout(requireContext());
         bottom.setGravity(Gravity.CENTER_VERTICAL);
+        bottom.setPaddingRelative(MobileUi.dp(requireContext(), 16), 0,
+                MobileUi.dp(requireContext(), 16), 0);
         time = MobileUi.text(requireContext(), "0:00 / 0:00", 12);
-        time.setPadding(MobileUi.dp(requireContext(), 16), 0, 0, 0);
+        time.setSingleLine(true);
+        time.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         bottom.addView(time, new LinearLayout.LayoutParams(0, -2, 1));
         fullscreen =
                 MobileUi.button(
@@ -287,64 +294,83 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                         "\u26f6",
                         () -> ((MobilePlaybackActivity) requireActivity()).toggleFullscreen());
         fullscreen.setContentDescription(getString(R.string.mobile_fullscreen));
-        fullscreen.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.playerFeedback(fullscreen);
         setIcon(fullscreen, "fullscreen", 22);
-        MobileUi.addButton(bottom, fullscreen);
-        fullscreen.setLayoutParams(new LinearLayout.LayoutParams(MobileUi.dp(requireContext(), 48), MobileUi.dp(requireContext(), 48)));
+        bottom.addView(fullscreen, new LinearLayout.LayoutParams(
+                MobileUi.dp(requireContext(), 48), MobileUi.dp(requireContext(), 48)));
         seek = new MobileSegmentSeekBar(requireContext());
         seek.setContentDescription("Video position");
-        seek.setProgressTintList(android.content.res.ColorStateList.valueOf(MobileUi.accent(requireContext())));
-        seek.setThumbTintList(android.content.res.ColorStateList.valueOf(MobileUi.accent(requireContext())));
+        seek.setEnabled(false);
         LinearLayout footer = new LinearLayout(requireContext());
         footer.setOrientation(LinearLayout.VERTICAL);
-        footer.addView(seek, new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 32)));
+        footer.addView(seek, new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 48)));
         footer.addView(bottom, new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 48)));
         controls.addView(footer, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         buffering = new ProgressBar(requireContext());
+        buffering.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
         buffering.setContentDescription("Buffering video");
         bufferingIndicator = new MobileBufferingIndicator(buffering, handler);
         stage.addView(
                 buffering,
                 new FrameLayout.LayoutParams(
-                        MobileUi.dp(requireContext(), 48),
-                        MobileUi.dp(requireContext(), 48),
+                        MobileUi.dp(requireContext(), 72),
+                        MobileUi.dp(requireContext(), 72),
                         Gravity.CENTER));
         overlay = new YouTubeOverlay(requireContext(), null);
         stage.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
         overlay.setVisibility(View.GONE);
+        seekPreview = new LinearLayout(requireContext());
+        seekPreview.setOrientation(LinearLayout.VERTICAL);
+        android.graphics.drawable.GradientDrawable previewSurface = round(0xee202020, 14);
+        previewSurface.setStroke(MobileUi.dp(requireContext(), 1), 0x44ffffff);
+        seekPreview.setBackground(previewSurface);
+        seekPreview.setClipToOutline(true);
+        seekPreview.setPadding(MobileUi.dp(requireContext(), 4), MobileUi.dp(requireContext(), 4),
+                MobileUi.dp(requireContext(), 4), 0);
+        seekPreview.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         preview = new ImageView(requireContext());
-        stage.addView(
-                preview,
-                new FrameLayout.LayoutParams(
-                        MobileUi.dp(requireContext(), 120),
-                        MobileUi.dp(requireContext(), 68),
-                        Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        seekPreview.addView(preview, new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 54)));
         preview.setVisibility(View.GONE);
-        seekTitle = MobileUi.text(requireContext(), "", 12);
-        stage.addView(seekTitle, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
-        seekTitle.setVisibility(View.GONE);
+        seekTitle = MobileUi.text(requireContext(), "", 14);
+        seekTitle.setGravity(Gravity.CENTER);
+        seekTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        seekTitle.setPadding(0, MobileUi.dp(requireContext(), 4), 0, MobileUi.dp(requireContext(), 6));
+        seekPreview.addView(seekTitle, new LinearLayout.LayoutParams(-1, -2));
+        stage.addView(seekPreview, new FrameLayout.LayoutParams(MobileUi.dp(requireContext(), 104), -2));
+        seekPreview.setVisibility(View.GONE);
         debug = new FrameLayout(requireContext());
         stage.addView(debug, new FrameLayout.LayoutParams(-1, -1));
         details = MobileUi.column(requireContext());
         details.setBackgroundColor(MobileUi.background(requireContext()));
         title = MobileUi.text(requireContext(), "", 18);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
-        details.addView(title);
+        LinearLayout information = MobileUi.column(requireContext());
+        information.setBackground(MobileUi.pillSurface(requireContext()));
+        information.setOnClickListener(v -> action(R.id.action_info));
+        title.setOnClickListener(v -> action(R.id.action_info));
+        information.addView(title);
         meta = MobileUi.text(requireContext(), "", 13);
         meta.setTextColor(requireContext().getColor(R.color.mobile_text_secondary));
         meta.setPadding(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
         meta.setOnClickListener(v -> action(R.id.action_info));
-        details.addView(meta);
+        information.addView(meta);
+        LinearLayout.LayoutParams informationParams = new LinearLayout.LayoutParams(-1, -2);
+        informationParams.setMargins(MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12),
+                MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
+        details.addView(information, informationParams);
         LinearLayout channel = new LinearLayout(requireContext());
         channel.setGravity(Gravity.CENTER_VERTICAL);
-        channel.setPadding(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 12), MobileUi.dp(requireContext(), 8));
+        channel.setPadding(MobileUi.dp(requireContext(), 12), MobileUi.dp(requireContext(), 8),
+                MobileUi.dp(requireContext(), 8), MobileUi.dp(requireContext(), 8));
+        channel.setBackground(MobileUi.pillSurface(requireContext()));
         avatar = new ImageView(requireContext());
         channel.addView(
                 avatar,
                 new LinearLayout.LayoutParams(
                         MobileUi.dp(requireContext(), 48), MobileUi.dp(requireContext(), 48)));
         Button author = actionButton(channel, R.id.action_channel, "Channel");
-        author.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.pillTouchFeedback(author);
         author.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         author.setTypeface(null, android.graphics.Typeface.BOLD);
         author.setMaxLines(1);
@@ -353,9 +379,11 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 new LinearLayout.LayoutParams(0, MobileUi.dp(requireContext(), 48), 1));
         avatar.setOnClickListener(v -> action(R.id.action_channel));
         Button subscribe = actionButton(channel, R.id.action_subscribe, "Subscribe");
-        subscribe.setBackground(round(Color.WHITE, 24));
-        subscribe.setTextColor(Color.BLACK);
-        details.addView(channel);
+        MobileUi.browseFeedback(subscribe, true);
+        subscribe.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams channelParams = new LinearLayout.LayoutParams(-1, -2);
+        channelParams.setMargins(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 8));
+        details.addView(channel, channelParams);
         HorizontalScrollView strip = new HorizontalScrollView(requireContext());
         strip.setHorizontalScrollBarEnabled(false);
         strip.setPadding(MobileUi.dp(requireContext(), 12), 0, MobileUi.dp(requireContext(), 12), MobileUi.dp(requireContext(), 8));
@@ -364,20 +392,21 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         details.addView(strip);
         LinearLayout reactions = new LinearLayout(requireContext());
         reactions.setGravity(Gravity.CENTER_VERTICAL);
-        reactions.setBackground(round(requireContext().getColor(R.color.mobile_surface), 24));
+        reactions.setBackground(MobileUi.pillSurface(requireContext()));
+        reactions.setClipToOutline(true);
         LinearLayout.LayoutParams reactionParams = new LinearLayout.LayoutParams(-2, MobileUi.dp(requireContext(), 48));
         reactionParams.setMargins(MobileUi.dp(requireContext(), 4), MobileUi.dp(requireContext(), 4), MobileUi.dp(requireContext(), 4), MobileUi.dp(requireContext(), 4));
         row.addView(reactions, reactionParams);
-        Button like = actionButton(reactions, R.id.action_thumbs_up, "Like");
+        Button like = actionButton(reactions, R.id.action_thumbs_up, getString(R.string.action_like));
         decorate(like, "like");
-        like.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.pillTouchFeedback(like);
         like.setLayoutParams(new LinearLayout.LayoutParams(-2, -1));
         View divider = new View(requireContext());
-        divider.setBackgroundColor(0xff3a3c40);
+        divider.setBackgroundColor(requireContext().getColor(R.color.mobile_divider));
         reactions.addView(divider, new LinearLayout.LayoutParams(MobileUi.dp(requireContext(), 1), MobileUi.dp(requireContext(), 24)));
         Button dislike = actionButton(reactions, R.id.action_thumbs_down, "");
         dislike.setContentDescription("Dislike");
-        dislike.setBackgroundColor(Color.TRANSPARENT);
+        MobileUi.pillTouchFeedback(dislike);
         dislike.setLayoutParams(new LinearLayout.LayoutParams(MobileUi.dp(requireContext(), 48), -1));
         setIcon(dislike, "dislike", 22);
         decorate(actionButton(row, R.id.action_share, "Share"), "share");
@@ -385,29 +414,21 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 () -> MobileDownload.open(requireContext(), getVideo() == null ? null : getVideo().videoId));
         decorate(download, "download");
         MobileUi.addButton(row, download);
-        actionButton(row, R.id.action_playlist_add, "Save");
+        decorate(actionButton(row, R.id.action_playlist_add, "Save"), "save");
         MobileUi.addButton(
                 row,
-                MobileUi.button(
+                MobileUi.browseButton(
                         requireContext(), getString(R.string.mobile_more), this::playbackOptions));
-        description = MobileUi.text(requireContext(), getString(R.string.mobile_watch_description), 14);
-        description.setMaxLines(3);
-        description.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        description.setBackground(MobileUi.rounded(requireContext(), requireContext().getColor(R.color.mobile_surface)));
-        description.setOnClickListener(v -> action(R.id.action_info));
-        LinearLayout.LayoutParams card = new LinearLayout.LayoutParams(-1, -2);
-        card.setMargins(MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 4), MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
-        details.addView(description, card);
-        Button comments = actionButton(details, R.id.action_chat, getString(R.string.mobile_watch_comments) + "  ›");
-        comments.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        comments.setBackground(MobileUi.rounded(requireContext(), requireContext().getColor(R.color.mobile_surface)));
-        LinearLayout.LayoutParams commentCard = new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 52));
-        commentCard.setMargins(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
-        comments.setLayoutParams(commentCard);
         chapters = MobileUi.column(requireContext());
         chapters.setBackgroundColor(Color.TRANSPARENT);
         chapters.setVisibility(View.GONE);
         details.addView(chapters);
+        Button comments = actionButton(details, R.id.action_chat, getString(R.string.mobile_watch_comments) + "  ›");
+        comments.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        MobileUi.browseFeedback(comments, false);
+        LinearLayout.LayoutParams commentCard = new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 52));
+        commentCard.setMargins(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
+        comments.setLayoutParams(commentCard);
         chatList = MobileUi.column(requireContext());
         chatList.setVisibility(View.GONE);
         details.addView(chatList);
@@ -439,6 +460,10 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                     if (right - left != oldRight - oldLeft) resize();
                 });
         stage.post(this::resize);
+        stage.addOnLayoutChangeListener((view, left, stageTop, right, stageBottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (left != oldLeft || stageTop != oldTop || right != oldRight || stageBottom != oldBottom)
+                MobileDialogActivity.updateCommentsLayout(view.getContext());
+        });
         return root;
     }
 
@@ -501,17 +526,35 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 new SeekBar.OnSeekBarChangeListener() {
                     public void onStartTrackingTouch(SeekBar bar) {
                         dragging = true;
+                        seekDuration = Math.max(0, getDurationMs());
                         wasPlaying = getPlayWhenReady();
                         setPlayWhenReady(false);
+                        play.setVisibility(View.INVISIBLE);
+                        previewIndex = -1;
+                        previewRequest++;
+                        preview.setImageDrawable(null);
+                        preview.setVisibility(View.GONE);
                         mPlaybackPresenter.onKeyDown(-1);
+                        seekTitle.setText(clock(seekDuration * bar.getProgress() / 10000));
+                        showSeekPreview();
                     }
 
                     public void onProgressChanged(SeekBar bar, int value, boolean user) {
                         if (!user) return;
-                        long position = getDurationMs() * value / 10000;
+                        long position = (dragging ? seekDuration : getDurationMs()) * value / 10000;
                         time.setText(clock(position) + " / " + clock(getDurationMs()));
+                        if (!dragging) {
+                            // Keyboard and accessibility adjustments have no touch release callback.
+                            if (getDurationMs() > 0) {
+                                setPositionMs(position);
+                                mPlaybackPresenter.onSeekPositionChanged(position);
+                                mPlaybackPresenter.onSeekEnd();
+                                mPlaybackPresenter.onTickle();
+                            }
+                            return;
+                        }
                         seekTitle.setText(clock(position));
-                        seekTitle.setVisibility(View.VISIBLE);
+                        showSeekPreview();
                         long[] positions = storyboard.getSeekPositions();
                         if (positions != null && positions.length > 0) {
                             int index = Arrays.binarySearch(positions, position);
@@ -520,28 +563,54 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                                             ? index
                                             : Math.min(
                                                     positions.length - 1, Math.max(0, -index - 2));
+                            if (index == previewIndex) return;
+                            previewIndex = index;
+                            int request = ++previewRequest;
                             storyboard.getBitmap(
                                     index,
                                     bitmap -> {
-                                        if (dragging && preview != null) {
+                                        if (dragging && preview != null && request == previewRequest) {
                                             preview.setImageBitmap(bitmap);
-                                            preview.setVisibility(View.VISIBLE);
+                                            preview.setVisibility(bitmap == null ? View.GONE : View.VISIBLE);
+                                            showSeekPreview();
                                         }
                                     });
                         }
                     }
 
                     public void onStopTrackingTouch(SeekBar bar) {
-                        long position = getDurationMs() * bar.getProgress() / 10000;
-                        setPositionMs(position);
-                        mPlaybackPresenter.onSeekPositionChanged(position);
+                        long position = seekDuration * bar.getProgress() / 10000;
+                        if (!seek.wasCancelled() && seekDuration > 0) {
+                            setPositionMs(position);
+                            mPlaybackPresenter.onSeekPositionChanged(position);
+                        } else position = getPositionMs();
                         dragging = false;
+                        previewRequest++;
                         setPlayWhenReady(wasPlaying);
+                        play.setVisibility(View.VISIBLE);
                         mPlaybackPresenter.onSeekEnd();
-                        preview.setVisibility(View.GONE);
-                        seekTitle.setVisibility(View.GONE);
+                        mPlaybackPresenter.onTickle();
+                        time.setText(clock(position) + " / " + clock(getDurationMs()));
+                        seekPreview.setVisibility(View.GONE);
                     }
                 });
+    }
+
+    private void showSeekPreview() {
+        seekPreview.setVisibility(View.VISIBLE);
+        int width = MobileUi.dp(requireContext(), stage.getHeight() < MobileUi.dp(requireContext(), 260) ? 104 : 152);
+        preview.getLayoutParams().height = (width - MobileUi.dp(requireContext(), 8)) * 9 / 16;
+        seekPreview.getLayoutParams().width = width;
+        seekPreview.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        android.graphics.Rect bounds = new android.graphics.Rect(0, 0, seek.getWidth(), seek.getHeight());
+        stage.offsetDescendantRectToMyCoords(seek, bounds);
+        int margin = MobileUi.dp(requireContext(), 8);
+        seekPreview.setX(Math.max(margin, Math.min(stage.getWidth() - width - margin,
+                bounds.left + seek.progressX() - width / 2f)));
+        seekPreview.setY(Math.max(margin, bounds.centerY() - seekPreview.getMeasuredHeight()
+                - MobileUi.dp(requireContext(), 16)));
+        seekPreview.requestLayout();
     }
 
     private static String clock(long ms) {
@@ -557,20 +626,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         FormatItem selected = getSubtitleFormat();
         FormatItem next = FormatItem.SUBTITLE_NONE;
         if (selected == null || selected.isDefault()) {
-            for (FormatItem saved : getPlayerData().getLastSubtitleFormats()) {
-                for (FormatItem available : formats) {
-                    if (!available.isDefault() && saved.equals(available)) next = available;
-                }
-                if (!next.isDefault()) break;
-            }
-            if (next.isDefault()) {
-                for (FormatItem available : formats) {
-                    if (!available.isDefault()) {
-                        next = available;
-                        break;
-                    }
-                }
-            }
+            next = MobileCaptions.preferred(formats, getPlayerData().getLastSubtitleFormats());
         }
         setFormat(next);
         getPlayerData().setFormat(next);
@@ -637,17 +693,67 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         dialog.showDialog(getString(R.string.playback_settings));
     }
 
+    private void updateControlInsets(WindowInsets insets) {
+        if (controls == null || getActivity() == null) return;
+        boolean full = ((MobilePlaybackActivity) getActivity()).isFullscreen() && !isInPIPMode();
+        int side = 0, top = 0;
+        // Keep the watch-page footer clear of the rounded bottom edge.
+        int bottom = isInPIPMode() ? 0 : MobileUi.dp(requireContext(), 8);
+        if (full) {
+            side = top = bottom = MobileUi.dp(requireContext(), 8);
+            if (Build.VERSION.SDK_INT >= 28 && insets != null && insets.getDisplayCutout() != null) {
+                DisplayCutout cutout = insets.getDisplayCutout();
+                // Equal side clearance keeps the controls centered in either landscape direction.
+                side += Math.max(cutout.getSafeInsetLeft(), cutout.getSafeInsetRight());
+                top += cutout.getSafeInsetTop();
+                bottom += cutout.getSafeInsetBottom();
+            }
+        }
+        controls.setPadding(side, top, side, bottom);
+        if (buffering != null && play != null) {
+            // The button centers inside the padded controls; the ring centers inside the stage.
+            buffering.setTranslationX(play.getTranslationX()
+                    + (controls.getPaddingLeft() - controls.getPaddingRight()) / 2f);
+            buffering.setTranslationY(play.getTranslationY()
+                    + (controls.getPaddingTop() - controls.getPaddingBottom()) / 2f);
+        }
+    }
+
+    private int commentsPanelWidth;
+    private String videoLikeCount;
+
+    void setCommentsPanelWidth(int width) {
+        if (commentsPanelWidth == width) return;
+        commentsPanelWidth = width;
+        resize();
+    }
+
+    int getVideoBottomOnScreen() {
+        if (stage == null || stage.getHeight() == 0) return 0;
+        int[] position = new int[2];
+        stage.getLocationOnScreen(position);
+        return position[1] + stage.getHeight();
+    }
+
     public void resize() {
         if (stage == null || getActivity() == null) return;
         boolean full = ((MobilePlaybackActivity) getActivity()).isFullscreen() || isInPIPMode();
+        stage.setClipToOutline(!full);
+        // Leave the enlarged timeline touch area clear on short portrait video frames.
+        play.setTranslationY(root.getWidth() * 9 / 16 < MobileUi.dp(requireContext(), 260) && !full
+                ? -MobileUi.dp(requireContext(), 24) : 0);
         bar.setVisibility(full ? View.GONE : View.VISIBLE);
         suggestions.setVisibility(full ? View.GONE : View.VISIBLE);
         stage.setLayoutParams(
                 new LinearLayout.LayoutParams(
-                        -1, full ? 0 : Math.max(1, root.getWidth()) * 9 / 16, full ? 1 : 0));
+                        full && commentsPanelWidth > 0 ? Math.max(1, root.getWidth() - commentsPanelWidth) : -1,
+                        full ? 0 : Math.max(1, root.getWidth()) * 9 / 16, full ? 1 : 0));
         suggestions.resize();
         fullscreen.setContentDescription(
                 getString(full ? R.string.mobile_exit_fullscreen : R.string.mobile_fullscreen));
+        setIcon(fullscreen, full ? "fullscreen-exit" : "fullscreen", 22);
+        updateControlInsets(controls.getRootWindowInsets());
+        controls.requestApplyInsets();
     }
 
     @Override
@@ -659,20 +765,48 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     @Override
     public void setVideo(Video v) {
         Video previous = getVideo();
-        if (v == null || previous == null || !Objects.equals(previous.videoId, v.videoId))
+        boolean changed = v == null || previous == null || !Objects.equals(previous.videoId, v.videoId);
+        if (changed) {
             suggestionsRequested = false;
+            videoLikeCount = null;
+            resetSuggestedPosition();
+            if (getContext() != null) MobileDialogActivity.dismissComments(getContext());
+        }
+        // Shared TV counter preferences can clear the model after metadata arrives.
+        // Keep the latest available count for this video in the mobile UI.
+        if (v != null && v.likeCount != null && !v.likeCount.trim().isEmpty()) videoLikeCount = v.likeCount;
         if (v != null && restoredPosition > 0 && Objects.equals(restoredId, v.videoId)) {
             v.pendingPosMs = restoredPosition;
             restoredPosition = 0;
         }
         mExoPlayerController.setVideo(v);
+        updateLikeButton();
         if (title != null && v != null) {
             title.setText(v.getTitleFull());
-            meta.setText(v.getSecondTitleFull());
+            meta.setText(videoMetadata(v));
             buttons.get(R.id.action_channel).setText(v.getAuthor());
-            description.setText(v.description == null || v.description.trim().isEmpty()
-                    ? getString(R.string.mobile_watch_description) : v.description);
         }
+    }
+
+    private void updateLikeButton() {
+        Button button = buttons.get(R.id.action_thumbs_up);
+        if (button == null) return;
+        String like = button.getContext().getString(R.string.action_like);
+        button.setText(videoLikeCount == null ? like : videoLikeCount);
+        button.setContentDescription(videoLikeCount == null ? like
+                : like + ", " + button.getContext().getString(R.string.mobile_video_like_count, videoLikeCount));
+    }
+
+    private static String videoMetadata(Video video) {
+        CharSequence subtitle = video.getSecondTitleFull();
+        if (subtitle == null) return "";
+        String author = video.getAuthor();
+        List<String> parts = new ArrayList<>();
+        for (String part : subtitle.toString().split("[•·]")) {
+            String text = part.trim();
+            if (!text.isEmpty() && (author == null || !text.equals(author.trim()))) parts.add(text);
+        }
+        return android.text.TextUtils.join(" · ", parts);
     }
 
     @Override
@@ -775,10 +909,12 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             row.setPadding(MobileUi.dp(requireContext(), 12), 0, MobileUi.dp(requireContext(), 12), MobileUi.dp(requireContext(), 12));
             for (Video chapter : group.getVideos()) {
                 LinearLayout card = MobileUi.column(requireContext());
-                card.setBackgroundColor(Color.TRANSPARENT);
+                MobileUi.browseFeedback(card, false);
+                card.setPadding(MobileUi.dp(requireContext(), 10), MobileUi.dp(requireContext(), 10),
+                        MobileUi.dp(requireContext(), 10), MobileUi.dp(requireContext(), 10));
                 ImageView image = new ImageView(requireContext());
                 image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                android.graphics.drawable.GradientDrawable border = round(requireContext().getColor(R.color.mobile_surface), 8);
+                android.graphics.drawable.GradientDrawable border = round(requireContext().getColor(R.color.mobile_surface), 16);
                 image.setBackground(border);
                 image.setClipToOutline(true);
                 image.setPadding(MobileUi.dp(requireContext(), 2), MobileUi.dp(requireContext(), 2), MobileUi.dp(requireContext(), 2), MobileUi.dp(requireContext(), 2));
@@ -840,7 +976,8 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             chapterScroll.smoothScrollTo(MobileUi.dp(requireContext(), 140) * i, 0);
             return;
         }
-        suggestions.list.scrollToPosition(Math.max(0, i));
+        // TV focus callbacks arrive as recommendations load. Keep the phone watch
+        // page at its current vertical position instead of revealing a suggestion.
     }
 
     @Override
@@ -849,13 +986,17 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             focusSuggestedItem(chapterGroup.getVideos().indexOf(v));
             return;
         }
-        int i = suggestions.adapter.indexOf(v);
-        if (i >= 0) suggestions.list.scrollToPosition(i);
+        // Recommendation focus must not move the phone watch page after loading.
     }
 
     @Override
     public void resetSuggestedPosition() {
-        suggestions.list.scrollToPosition(0);
+        if (suggestions != null) {
+            androidx.recyclerview.widget.GridLayoutManager layout =
+                    (androidx.recyclerview.widget.GridLayoutManager) suggestions.list.getLayoutManager();
+            // The details header can be taller than the viewport; align its top.
+            if (layout != null) layout.scrollToPositionWithOffset(0, 0);
+        }
     }
 
     @Override
@@ -902,6 +1043,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
 
     @Override
     public void showControls(boolean show) {
+        if (!show && dragging) return;
         if (controls != null) {
             controls.setVisibility(show ? View.VISIBLE : View.GONE);
             mPlaybackPresenter.onControlsShown(show);
@@ -936,14 +1078,19 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                         state == BUTTON_ON ? "Turn captions off" : "Turn captions on");
             } else if (id == R.id.action_thumbs_down) {
                 b.setContentDescription(a == null ? "Dislike" : a.getLabel1());
+            } else if (id == R.id.action_thumbs_up) {
+                updateLikeButton();
             } else if (id == R.id.action_chat) {
                 b.setText(getString(R.string.mobile_watch_comments) + "  ›");
             } else if (id == R.id.action_subscribe) {
                 b.setText(getString(state == BUTTON_ON ? R.string.subscribed_to_channel : R.string.action_subscribe));
             } else if (a != null && a.getLabel1() != null && id != R.id.action_channel)
                 b.setText(a.getLabel1());
-            b.setTextColor(id == R.id.action_subscribe ? Color.BLACK
-                    : state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE);
+            b.setSelected(state == BUTTON_ON);
+            int color = state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE;
+            b.setTextColor(color);
+            for (android.graphics.drawable.Drawable icon : b.getCompoundDrawables())
+                if (icon != null) icon.setTint(color);
             if (b.getForeground() != null)
                 b.getForeground().setTint(state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE);
         }
@@ -972,8 +1119,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
 
     @Override
     public void showSubtitles(boolean show) {
-        if (surface.getSubtitleView() != null)
-            surface.getSubtitleView().setVisibility(show ? View.VISIBLE : View.GONE);
+        super.showSubtitles(show);
     }
 
     @Override
@@ -1037,7 +1183,10 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         stopPlayback();
         buttons.clear();
         avatar = preview = poster = null;
-        title = meta = time = quality = seekTitle = description = null;
+        seekPreview = null;
+        dragging = false;
+        previewRequest++;
+        title = meta = time = quality = seekTitle = null;
         chapters = null;
         chapterGroup = null;
         chapterScroll = null;

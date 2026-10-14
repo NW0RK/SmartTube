@@ -45,12 +45,6 @@ public class MobilePlayerRegressionTest {
         assertTrue(sheetHeight < activity.getResources().getDisplayMetrics().heightPixels);
         assertEquals(android.view.Gravity.BOTTOM, window.gravity);
         assertTrue((window.flags & android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL) != 0);
-        android.view.MotionEvent outside = android.view.MotionEvent.obtain(
-                0, 0, android.view.MotionEvent.ACTION_OUTSIDE, 0, -100, 0);
-        activity.onTouchEvent(outside);
-        outside.recycle();
-        assertFalse(activity.isFinishing());
-
         activity.show(java.util.Collections.singletonList(comments), "Replies", false, true, true, 2);
         activity.onBackPressed();
         assertEquals(sheetHeight, activity.getWindow().getAttributes().height);
@@ -63,6 +57,72 @@ public class MobilePlayerRegressionTest {
         assertEquals(0, window.flags & android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
         activity.onBackPressed();
         assertEquals(sheetHeight, activity.getWindow().getAttributes().height);
+        controller.destroy();
+    }
+
+    @Test
+    public void commentsRemainOnVideoTouchAndDismissWhenLeavingPlayerButOrdinaryMenusRemain() {
+        org.robolectric.android.controller.ActivityController<MobileDialogActivity> controller =
+                org.robolectric.Robolectric.buildActivity(MobileDialogActivity.class).create();
+        MobileDialogActivity activity = controller.get();
+        activity.show(java.util.Collections.emptyList(), "Settings", false, false, false, 3);
+        MobileDialogActivity.dismissComments(activity);
+        assertFalse(activity.isFinishing());
+        com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory comments =
+                com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.from(
+                        1, com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.TYPE_COMMENTS,
+                        "Comments", java.util.Collections.emptyList());
+        activity.show(java.util.Collections.singletonList(comments), "Comments", false, true, true, 1);
+        assertTrue((activity.getWindow().getAttributes().flags
+                & android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH) != 0);
+        android.view.MotionEvent outside = android.view.MotionEvent.obtain(
+                0, 0, android.view.MotionEvent.ACTION_OUTSIDE, 0, -100, 0);
+        activity.onTouchEvent(outside);
+        outside.recycle();
+        assertFalse(activity.isFinishing());
+        activity.clearBackstack();
+        activity.onBackPressed();
+        assertTrue(activity.isFinishing());
+        controller.destroy();
+        controller = org.robolectric.Robolectric.buildActivity(MobileDialogActivity.class).create();
+        activity = controller.get();
+        activity.show(java.util.Collections.singletonList(comments), "Comments", false, true, true, 1);
+        MobileDialogActivity.dismissComments(activity);
+        assertTrue(activity.isFinishing());
+        controller.destroy();
+    }
+
+    @Test
+    @Config(qualifiers = "w800dp-h360dp-land-mdpi")
+    public void fullscreenCommentsAndRepliesStayOnRightAndRestoreAfterSettings() {
+        org.robolectric.android.controller.ActivityController<MobileDialogActivity> controller =
+                org.robolectric.Robolectric.buildActivity(MobileDialogActivity.class).create();
+        MobileDialogActivity activity = controller.get();
+        com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory comments =
+                com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.from(
+                        1, com.liskovsoft.smartyoutubetv2.common.app.models.playback.ui.OptionCategory.TYPE_COMMENTS,
+                        "Comments", java.util.Collections.emptyList());
+        activity.show(java.util.Collections.singletonList(comments), "Comments", false, true, true, 1);
+        android.view.WindowManager.LayoutParams window = activity.getWindow().getAttributes();
+        int panelWidth = window.width;
+        assertTrue(panelWidth > 0);
+        assertTrue(panelWidth <= 400);
+        assertEquals(android.view.Gravity.RIGHT | android.view.Gravity.TOP, window.gravity);
+        assertEquals(android.view.WindowManager.LayoutParams.MATCH_PARENT, window.height);
+        assertTrue((window.flags & android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL) != 0);
+        activity.show(java.util.Collections.singletonList(comments), "Replies", false, true, true, 2);
+        activity.onBackPressed();
+        assertEquals(panelWidth, activity.getWindow().getAttributes().width);
+        activity.show(java.util.Collections.emptyList(), "Settings", false, false, false, 3);
+        assertEquals(android.view.WindowManager.LayoutParams.MATCH_PARENT, activity.getWindow().getAttributes().width);
+        activity.onBackPressed();
+        assertEquals(panelWidth, activity.getWindow().getAttributes().width);
+        assertEquals(android.view.Gravity.RIGHT | android.view.Gravity.TOP, activity.getWindow().getAttributes().gravity);
+        org.robolectric.RuntimeEnvironment.setQualifiers("w360dp-h800dp-port-mdpi");
+        activity.onConfigurationChanged(activity.getResources().getConfiguration());
+        assertEquals(android.view.Gravity.BOTTOM, activity.getWindow().getAttributes().gravity);
+        assertEquals(android.view.WindowManager.LayoutParams.MATCH_PARENT, activity.getWindow().getAttributes().width);
+        assertTrue(activity.getWindow().getAttributes().height > 0);
         controller.destroy();
     }
 

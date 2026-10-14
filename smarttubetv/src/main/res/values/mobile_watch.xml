@@ -5,8 +5,11 @@
     <string name="mobile_download_install_message">Download opens YTDLnis on your phone. Install it separately, then try again.</string>
     <string name="mobile_download_install">Get YTDLnis</string>
     <string name="mobile_watch_comments">Comments</string>
+    <string name="mobile_video_like_count">%1$s likes</string>
+    <string name="mobile_video_options_close">Close video options</string>
     <string name="mobile_comments_close">Close comments</string>
     <string name="mobile_comments_like">Like comment</string>
+    <string name="mobile_comments_unlike">Unlike comment</string>
     <string name="mobile_comments_more">Load more comments</string>
     <string name="mobile_watch_description">Show description</string>
     <string name="mobile_watch_rewind">Rewind 10 seconds</string>

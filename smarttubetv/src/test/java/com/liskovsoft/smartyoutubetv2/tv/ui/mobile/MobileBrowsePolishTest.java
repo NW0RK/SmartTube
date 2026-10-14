@@ -115,16 +115,16 @@ public class MobileBrowsePolishTest {
         assertTrue(clear.getWidth() >= MobileUi.dp(c, 48));
         assertTrue(clear.getHeight() >= MobileUi.dp(c, 48));
         assertNotNull(clear.getContentDescription());
-        assertTrue(bar.getChildAt(2).getRight() <= width);
+        assertTrue(bar.getChildAt(bar.getChildCount() - 1).getRight() <= width);
     }
 
     @Test
     public void navigationAndChipsExposeSelectionAndDisabledState() {
         Context c = context();
         Button tab = MobileUi.browseNavigation(c, R.drawable.icon_home, "Home", () -> {});
-        assertEquals("Home", tab.getText().toString());
+        assertEquals("", tab.getText().toString());
         assertEquals("Home", tab.getContentDescription());
-        assertNotNull(tab.getCompoundDrawables()[1]);
+        assertNotNull(tab.getForeground());
         LinearLayout navigation = new LinearLayout(c);
         MobileUi.addNavigation(navigation, tab);
         LinearLayout.LayoutParams spacing = (LinearLayout.LayoutParams) tab.getLayoutParams();

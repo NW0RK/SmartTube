@@ -19,14 +19,35 @@ final class MobileUi {
         return shape;
     }
 
+    static GradientDrawable pillSurface(Context c) {
+        GradientDrawable surface = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{c.getColor(R.color.mobile_navigation_top), c.getColor(R.color.mobile_navigation_bottom)});
+        surface.setCornerRadius(dp(c, 28));
+        surface.setStroke(dp(c, 1), c.getColor(R.color.mobile_divider));
+        return surface;
+    }
+
     static void browseFeedback(View view, boolean selectable) {
         Context c = view.getContext();
         StateListDrawable states = new StateListDrawable();
-        if (selectable) states.addState(new int[]{android.R.attr.state_selected},
-                rounded(c, Color.argb(55, Color.red(accent(c)), Color.green(accent(c)), Color.blue(accent(c)))));
-        states.addState(new int[]{}, rounded(c, c.getColor(R.color.mobile_surface)));
+        if (selectable) {
+            GradientDrawable selected = pillSurface(c);
+            selected.setColor(Color.argb(55, Color.red(accent(c)), Color.green(accent(c)), Color.blue(accent(c))));
+            states.addState(new int[]{android.R.attr.state_selected}, selected);
+        }
+        states.addState(new int[]{}, pillSurface(c));
+        GradientDrawable mask = rounded(c, Color.WHITE);
+        mask.setCornerRadius(dp(c, 28));
         view.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                states, rounded(c, Color.WHITE)));
+                states, mask));
+    }
+
+    static void pillTouchFeedback(View view) {
+        Context c = view.getContext();
+        GradientDrawable mask = rounded(c, Color.WHITE);
+        mask.setCornerRadius(dp(c, 28));
+        view.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
+                rounded(c, Color.TRANSPARENT), mask));
     }
 
     static Button browseButton(Context c, CharSequence title, Runnable action) {
@@ -42,7 +63,8 @@ final class MobileUi {
         button.setSelected(selected);
         int color = selected ? accent(button.getContext()) : Color.WHITE;
         button.setTextColor(color);
-        if (button.getForeground() != null) button.getForeground().setTint(color);
+        if (button.getForeground() != null && !Boolean.TRUE.equals(button.getTag(R.id.mobile_navigation_avatar)))
+            button.getForeground().setTint(color);
         for (android.graphics.drawable.Drawable icon : button.getCompoundDrawables())
             if (icon != null && !Boolean.TRUE.equals(button.getTag(R.id.mobile_navigation_avatar))) icon.setTint(color);
     }
@@ -61,9 +83,10 @@ final class MobileUi {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.addView(browseIcon(c, R.drawable.mobile_back, c.getString(R.string.mobile_back), back),
                 new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
+        addSeparator(bar);
         LinearLayout field = new LinearLayout(c);
         field.setGravity(Gravity.CENTER_VERTICAL);
-        field.setBackground(rounded(c, c.getColor(R.color.mobile_surface)));
+        field.setBackground(pillSurface(c));
         query.setSingleLine(true);
         query.setTextColor(Color.WHITE);
         query.setHintTextColor(c.getColor(R.color.mobile_text_secondary));
@@ -74,6 +97,7 @@ final class MobileUi {
         field.addView(query, new LinearLayout.LayoutParams(0, -2, 1));
         field.addView(clear, new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
         bar.addView(field, new LinearLayout.LayoutParams(0, -2, 1));
+        addSeparator(bar);
         bar.addView(browseIcon(c, R.drawable.mobile_mic, c.getString(R.string.mobile_voice_search), voice),
                 new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
         bar.setPadding(0, dp(c, 8), 0, dp(c, 8));
@@ -178,16 +202,40 @@ final class MobileUi {
         button.setForegroundGravity(Gravity.FILL);
     }
 
+    static void playerFeedback(Button button) {
+        Context c = button.getContext();
+        StateListDrawable states = new StateListDrawable();
+        GradientDrawable selected = rounded(c, 0x55202020);
+        selected.setCornerRadius(dp(c, 28));
+        selected.setStroke(dp(c, 1), accent(c));
+        states.addState(new int[]{android.R.attr.state_selected}, selected);
+        GradientDrawable normal = rounded(c, 0x66202020);
+        normal.setCornerRadius(dp(c, 28));
+        normal.setStroke(dp(c, 1), 0x22ffffff);
+        states.addState(new int[]{}, normal);
+        GradientDrawable mask = rounded(c, Color.WHITE);
+        mask.setCornerRadius(dp(c, 28));
+        button.setBackgroundTintList(null);
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(
+                Color.argb(65, Color.red(accent(c)), Color.green(accent(c)), Color.blue(accent(c)))),
+                states, mask));
+        button.setStateListAnimator(null);
+        button.setElevation(0);
+    }
+
     static LinearLayout toolbar(Context c, CharSequence title, Runnable back) {
         LinearLayout row = new LinearLayout(c);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPaddingRelative(dp(c, 8), dp(c, 4), dp(c, 8), dp(c, 4));
         row.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{c.getColor(R.color.mobile_surface), background(c)}));
-        if (back != null)
+        if (back != null) {
             row.addView(iconButton(c, R.drawable.mobile_back, c.getString(R.string.mobile_back), back),
                     new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
+            addSeparator(row);
+        }
         TextView name = text(c, title, 20);
+        name.setId(R.id.mobile_toolbar_title);
         name.setMinHeight(dp(c, 56));
         name.setGravity(Gravity.CENTER_VERTICAL);
         name.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -196,10 +244,13 @@ final class MobileUi {
         return row;
     }
 
-    static LinearLayout watchToolbar(Context c, Runnable back) {
-        LinearLayout row = toolbar(c, "SmartTube", back);
-        ImageButton collapse = (ImageButton) row.getChildAt(0);
-        collapse.setImageResource(R.drawable.mobile_down);
+    static LinearLayout watchToolbar(Context c) {
+        LinearLayout row = toolbar(c, c.getString(R.string.mobile_brand_name), null);
+        ImageView brand = new ImageView(c);
+        brand.setImageResource(R.drawable.mobile_top_left);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        row.addView(brand, 0, new LinearLayout.LayoutParams(dp(c, 40), dp(c, 32)));
         return row;
     }
 
@@ -224,15 +275,115 @@ final class MobileUi {
     static Button browseNavigation(Context c, int icon, String label, Runnable action) {
         Button button = navigationButton(c, icon, label, action);
         button.setContentDescription(label);
-        button.setMinHeight(dp(c, 64));
-        button.setMaxLines(2);
+        navigationIcon(button, button.getCompoundDrawables()[1]);
+        button.setMinHeight(dp(c, 48));
+        button.setMinimumHeight(dp(c, 48));
+        button.setCompoundDrawablePadding(0);
+        StateListDrawable states = new StateListDrawable();
         GradientDrawable selected = rounded(c, 0x22ffffff);
         selected.setCornerRadius(dp(c, 32));
-        StateListDrawable states = new StateListDrawable();
         states.addState(new int[]{android.R.attr.state_selected}, selected);
         states.addState(new int[]{}, rounded(c, Color.TRANSPARENT));
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)), states, null));
+        GradientDrawable mask = rounded(c, Color.WHITE);
+        mask.setCornerRadius(dp(c, 32));
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
+                states, mask));
         return button;
+    }
+
+    static void navigationIcon(Button button, android.graphics.drawable.Drawable drawable) {
+        int size = dp(button.getContext(), 24);
+        android.graphics.drawable.LayerDrawable icon = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{drawable});
+        icon.setLayerSize(0, size, size);
+        icon.setLayerGravity(0, Gravity.CENTER);
+        button.setText("");
+        button.setCompoundDrawables(null, null, null, null);
+        button.setPadding(0, 0, 0, 0);
+        button.setForeground(icon);
+        button.setForegroundGravity(Gravity.FILL);
+    }
+
+    static void addSeparator(LinearLayout row) {
+        Context c = row.getContext();
+        View divider = new View(c);
+        divider.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        divider.setBackgroundColor(c.getColor(R.color.mobile_divider));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(c, 1), dp(c, 24));
+        params.gravity = Gravity.CENTER_VERTICAL;
+        params.setMargins(dp(c, 6), 0, dp(c, 6), 0);
+        row.addView(divider, params);
+    }
+
+    static void menuControl(TextView control) {
+        Context c = control.getContext();
+        control.setSingleLine(false);
+        control.setMaxLines(Integer.MAX_VALUE);
+        control.setEllipsize(null);
+        control.setTextSize(16);
+        control.setTextColor(Color.WHITE);
+        control.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        control.setMinHeight(dp(c, 56));
+        control.setMinimumHeight(dp(c, 56));
+        control.setPaddingRelative(dp(c, 16), dp(c, 16), dp(c, 16), dp(c, 16));
+        control.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
+                new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT),
+                new android.graphics.drawable.ColorDrawable(Color.WHITE)));
+        if (control instanceof CompoundButton) {
+            ColorStateList tint = new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{accent(c), c.getColor(R.color.mobile_text_secondary)});
+            if (control instanceof Switch) {
+                ((Switch) control).setThumbTintList(tint);
+                ((Switch) control).setTrackTintList(tint.withAlpha(100));
+                ((Switch) control).setSwitchPadding(dp(c, 16));
+            } else ((CompoundButton) control).setButtonTintList(tint);
+        }
+        control.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    static Button menuRow(Context c, CharSequence title, int iconRes, Runnable action) {
+        Button row = button(c, title, action);
+        menuControl(row);
+        android.graphics.drawable.Drawable icon = iconRes > 0 ? c.getDrawable(iconRes).mutate() : null;
+        if (icon != null) {
+            icon.setBounds(0, 0, dp(c, 24), dp(c, 24));
+            icon.setTint(Color.WHITE);
+        }
+        MobilePlayerIcon arrow = new MobilePlayerIcon("chevron-right");
+        arrow.setBounds(0, 0, dp(c, 18), dp(c, 18));
+        arrow.setTint(c.getColor(R.color.mobile_text_secondary));
+        row.setCompoundDrawablesRelative(icon, null, arrow, null);
+        row.setCompoundDrawablePadding(dp(c, 16));
+        return row;
+    }
+
+    static void menuDivider(LinearLayout parent) {
+        Context c = parent.getContext();
+        View divider = new View(c);
+        divider.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        divider.setBackgroundColor(c.getColor(R.color.mobile_divider));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(c, 1));
+        params.setMargins(dp(c, 16), dp(c, 8), dp(c, 16), dp(c, 8));
+        parent.addView(divider, params);
+    }
+
+    static void settingsControl(TextView control) {
+        Context c = control.getContext();
+        control.setTextSize(15);
+        control.setTextColor(Color.WHITE);
+        control.setGravity(Gravity.CENTER_VERTICAL);
+        control.setMinHeight(dp(c, 56));
+        control.setPaddingRelative(dp(c, 16), dp(c, 14), dp(c, 16), dp(c, 14));
+        control.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
+                pillSurface(c), null));
+        if (control instanceof CompoundButton)
+            ((CompoundButton) control).setButtonTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{accent(c), c.getColor(R.color.mobile_text_secondary)}));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, dp(c, 4), 0, dp(c, 4));
+        control.setLayoutParams(params);
     }
 
     static void addNavigation(LinearLayout row, Button button) {

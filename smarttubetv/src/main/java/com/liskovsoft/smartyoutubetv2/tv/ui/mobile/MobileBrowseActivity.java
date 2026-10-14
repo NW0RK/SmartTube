@@ -27,15 +27,17 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     private HorizontalScrollView sectionStrip;
     private Button youTab;
     private int requestedDestination = -1;
+    private ScrollView youScroller;
 
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
         presenter = BrowsePresenter.instance(this);
         presenter.setView(this);
-        LinearLayout root = MobileUi.column(this), top = MobileUi.toolbar(this, "SmartTube", null);
+        LinearLayout root = MobileUi.column(this), top = MobileUi.toolbar(this, getString(R.string.mobile_brand_name), null);
         ImageView brand = new ImageView(this);
-        brand.setImageResource(R.drawable.mobile_brand);
+        brand.setImageResource(R.drawable.mobile_top_left);
+        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
         brand.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         top.addView(brand, 0, new LinearLayout.LayoutParams(MobileUi.dp(this, 40), MobileUi.dp(this, 32)));
         top.addView(
@@ -45,6 +47,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
                         getString(R.string.action_search),
                         () -> SearchPresenter.instance(this).startSearch(null)),
                 new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
+        MobileUi.addSeparator(top);
         top.addView(
                 MobileUi.browseIcon(
                         this,
@@ -75,9 +78,9 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         tab(tabs, getString(R.string.header_home), MediaGroup.TYPE_HOME, R.drawable.icon_home);
         tab(
                 tabs,
-                getString(R.string.header_subscriptions),
-                MediaGroup.TYPE_SUBSCRIPTIONS,
-                R.drawable.icon_subscriptions);
+                getString(R.string.header_history),
+                MediaGroup.TYPE_HISTORY,
+                R.drawable.icon_history);
         youTab = MobileUi.browseNavigation(this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou);
         MobileUi.addNavigation(tabs, youTab);
         setContentView(new MobileNavigationShell(this, root, tabs));
@@ -141,8 +144,10 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
             entry.getValue().setAlpha(enabled ? 1f : 0.4f);
             MobileUi.navigationState(entry.getValue(), enabled && !you && selected == entry.getKey());
         }
-        for (BrowseSection s : sections) {
-            if (s.getId() == MediaGroup.TYPE_SHORTS) continue;
+        List<BrowseSection> topSections = new ArrayList<>(sections);
+        topSections.removeIf(s -> !s.isEnabled() || topSectionRank(s.getId()) < 0);
+        topSections.sort(Comparator.comparingInt(s -> topSectionRank(s.getId())));
+        for (BrowseSection s : topSections) {
             Button button =
                     MobileUi.browseButton(
                             this,
@@ -165,39 +170,47 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         }
     }
 
+    private static int topSectionRank(int id) {
+        switch (id) {
+            case MediaGroup.TYPE_HOME: return 0;
+            case MediaGroup.TYPE_MUSIC: return 1;
+            case MediaGroup.TYPE_SUBSCRIPTIONS: return 2;
+            case MediaGroup.TYPE_USER_PLAYLISTS: return 3;
+            case MediaGroup.TYPE_SHORTS:
+            case MediaGroup.TYPE_KIDS_HOME:
+            case MediaGroup.TYPE_SPORTS:
+            case MediaGroup.TYPE_LIVE:
+            case MediaGroup.TYPE_GAMING:
+            case MediaGroup.TYPE_NEWS:
+            case MediaGroup.TYPE_CHANNEL_UPLOADS: return -1;
+            default: return 4;
+        }
+    }
+
     private void showYou() {
         rememberScroll();
         you = true;
         rebuildChips();
         content.removeAllViews();
         ScrollView view = new ScrollView(this);
-        LinearLayout items = MobileUi.column(this);
-        int padding = getResources().getDimensionPixelSize(R.dimen.mobile_page_padding);
-        items.setPadding(padding, padding, padding, padding);
-        view.addView(items);
-        content.addView(view);
-        items.addView(MobileUi.text(this, getString(R.string.mobile_you), 24));
+        youScroller = view;
+        view.setFillViewport(true);
         com.liskovsoft.mediaserviceinterfaces.oauth.Account account =
                 com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager.instance().getSelectedAccount();
-        if (account != null && account.getName() != null)
-            items.addView(MobileUi.text(this, account.getName(), 20));
-        MobileUi.addBrowseButton(items,
-                MobileUi.browseButton(
-                        this,
-                        getString(R.string.mobile_account),
-                        () -> AccountSelectionPresenter.instance(this).show(true)));
-        for (BrowseSection s : sections)
-            if (s.getId() != MediaGroup.TYPE_HOME
-                    && s.getId() != MediaGroup.TYPE_SHORTS
-                    && s.getId() != MediaGroup.TYPE_SUBSCRIPTIONS)
-                MobileUi.addBrowseButton(items,
-                        MobileUi.browseButton(
-                                this,
-                                s.getTitle(),
-                                () -> {
-                                    you = false;
-                                    presenter.selectSection(s.getId());
-                                }));
+        view.addView(new MobileYouView(this, account, sections,
+                () -> AccountSelectionPresenter.instance(this).show(true), section -> {
+                    you = false;
+                    presenter.selectSection(section.getId());
+                }));
+        content.addView(view);
+    }
+
+    private void refreshYou() {
+        if (!you || content == null) return;
+        int offset = youScroller == null ? 0 : youScroller.getScrollY();
+        showYou();
+        ScrollView current = youScroller;
+        current.post(() -> current.scrollTo(0, offset));
     }
 
     private void rememberScroll() {
@@ -210,6 +223,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         removeSection(s);
         sections.add(index >= 0 && index <= sections.size() ? index : sections.size(), s);
         rebuildChips();
+        refreshYou();
         chips.post(this::applyDestination);
     }
 
@@ -217,17 +231,25 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     public void removeSection(BrowseSection s) {
         if (s != null) sections.removeIf(x -> x.getId() == s.getId());
         rebuildChips();
+        refreshYou();
     }
 
     @Override
     public void removeAllSections() {
         sections.clear();
         rebuildChips();
+        refreshYou();
     }
 
     @Override
     public void selectSection(int index, boolean focus) {
         if (sections.isEmpty() || index < 0) return;
+        // Account and section refreshes restore presenter focus without leaving You.
+        if (you && !focus) {
+            feed.clear();
+            refreshYou();
+            return;
+        }
         BrowseSection s = sections.get(Math.min(index, sections.size() - 1));
         if (s.getId() == MediaGroup.TYPE_SHORTS) {
             presenter.selectSection(MediaGroup.TYPE_HOME);
@@ -265,12 +287,14 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.removeAllViews();
         ScrollView view = new ScrollView(this);
         settings = MobileUi.column(this);
-        int padding = MobileUi.dp(this, 16);
-        settings.setPadding(padding, padding, padding, padding);
+        settings.setPadding(0, MobileUi.dp(this, 8), 0, MobileUi.dp(this, 24));
         view.addView(settings);
         content.addView(view);
-        for (SettingsItem i : g.getItems())
-            settings.addView(MobileUi.button(this, i.title, i.onClick));
+        settings.addView(MobileUi.text(this, getString(R.string.header_settings), 24));
+        for (SettingsItem i : g.getItems()) {
+            if (settings.getChildCount() > 1) MobileUi.menuDivider(settings);
+            settings.addView(MobileUi.menuRow(this, i.title.replace("SmartTube", "NikoTube"), i.imageResId, i.onClick));
+        }
     }
 
     @Override
@@ -319,6 +343,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     public void onConfigurationChanged(Configuration c) {
         super.onConfigurationChanged(c);
         feed.resize();
+        refreshYou();
     }
 
     @Override
@@ -334,6 +359,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         super.onResume();
         if (presenter != null) presenter.onViewResumed();
         if (youTab != null) MobileNavigationShell.accountAvatar(youTab);
+        refreshYou();
     }
 
     @Override

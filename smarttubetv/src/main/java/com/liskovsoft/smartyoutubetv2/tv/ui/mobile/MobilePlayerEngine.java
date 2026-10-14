@@ -21,6 +21,7 @@ import com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.controller.ExoPlayerController;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.other.ExoPlayerInitializer;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.FormatItem;
+import com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.ExoFormatItem;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.versions.renderer.CustomOverridesRenderersFactory;
 import com.liskovsoft.smartyoutubetv2.common.exoplayer.versions.selector.RestoreTrackSelector;
 import com.liskovsoft.smartyoutubetv2.common.prefs.*;
@@ -48,6 +49,8 @@ public abstract class MobilePlayerEngine extends Fragment
     private int zoom = 100, rotation;
     private float aspect;
     private boolean flip;
+    private final MobileCaptions captions = new MobileCaptions();
+    private boolean subtitlesVisible = true;
 
     protected PlayerData getPlayerData() {
         return PlayerData.instance(requireContext());
@@ -85,6 +88,13 @@ public abstract class MobilePlayerEngine extends Fragment
                 boolean active = playWhenReady
                         && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
                 updatePlaybackService(active);
+                if (state == Player.STATE_READY) prepareCaptions();
+            }
+
+            @Override
+            public void onTracksChanged(com.google.android.exoplayer2.source.TrackGroupArray groups,
+                    TrackSelectionArray selections) {
+                if (mPlayer.getPlaybackState() == Player.STATE_READY) prepareCaptions();
             }
 
             @Override
@@ -104,6 +114,26 @@ public abstract class MobilePlayerEngine extends Fragment
     }
 
     protected void onPlayerCreated() {}
+
+    private void prepareCaptions() {
+        FormatItem preferred = captions.prepare(mExoPlayerController.getSubtitleFormats(),
+                getPlayerData().getLastSubtitleFormats());
+        if (preferred != null) mExoPlayerController.selectFormat(preferred);
+        updateCaptionVisibility();
+    }
+
+    private void updateCaptionVisibility() {
+        if (surface != null && surface.getSubtitleView() != null) {
+            surface.getSubtitleView().setVisibility(subtitlesVisible && captions.isEnabled()
+                    ? android.view.View.VISIBLE : android.view.View.INVISIBLE);
+        }
+    }
+
+    @Override
+    public void showSubtitles(boolean show) {
+        subtitlesVisible = show;
+        updateCaptionVisibility();
+    }
 
     protected void resumePlaybackService() {
         if (mPlayer != null && mPlayer.getPlayWhenReady()
@@ -144,6 +174,8 @@ public abstract class MobilePlayerEngine extends Fragment
         mPlayerInitializer.release();
         mExoPlayerController.release();
         mPlayer = null;
+        captions.reset();
+        updateCaptionVisibility();
     }
 
     @Override
@@ -167,6 +199,8 @@ public abstract class MobilePlayerEngine extends Fragment
 
     @Override
     public void resetPlayerState() {
+        captions.reset();
+        updateCaptionVisibility();
         mExoPlayerController.resetPlayerState();
     }
 
@@ -384,11 +418,23 @@ public abstract class MobilePlayerEngine extends Fragment
 
     @Override
     public List<FormatItem> getSubtitleFormats() {
-        return mExoPlayerController.getSubtitleFormats();
+        List<FormatItem> formats = mExoPlayerController.getSubtitleFormats();
+        if (formats == null || captions.isEnabled()) return formats;
+        List<FormatItem> result = new java.util.ArrayList<>();
+        for (FormatItem format : formats) {
+            result.add(ExoFormatItem.fromWithSelection(format.getTrack(), format.isDefault()));
+        }
+        return result;
     }
 
     @Override
     public void setFormat(FormatItem formatItem) {
+        if (formatItem != null && formatItem.getType() == FormatItem.TYPE_SUBTITLE) {
+            captions.select(formatItem);
+            updateCaptionVisibility();
+            // Keep the text renderer running while hidden so CC can reveal the current cue.
+            if (formatItem.isDefault()) return;
+        }
         // Android 4.4 fix for format selection dialog (player destroyed when dialog is focused)
         mExoPlayerController.selectFormat(formatItem);
     }
@@ -405,7 +451,7 @@ public abstract class MobilePlayerEngine extends Fragment
 
     @Override
     public FormatItem getSubtitleFormat() {
-        return mExoPlayerController.getSubtitleFormat();
+        return captions.isEnabled() ? mExoPlayerController.getSubtitleFormat() : FormatItem.SUBTITLE_NONE;
     }
 
     @Override

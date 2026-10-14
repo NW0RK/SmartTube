@@ -1,4 +1,11 @@
 <resources>
+    <item name="mobile_toolbar_title" type="id"/>
+    <string name="mobile_brand_name" translatable="false">NikoTube</string>
+    <color name="mobile_divider">#26FFFFFF</color>
+    <color name="mobile_navigation_overlay_top">#88383838</color>
+    <color name="mobile_navigation_overlay_bottom">#88222222</color>
+    <color name="mobile_player_panel">#181818</color>
+    <color name="mobile_comment_heart">#FF637C</color>
     <item name="mobile_watch_container" type="id"/>
     <style name="MobileTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
@@ -13,6 +20,8 @@
     <string name="mobile_empty">No videos to show</string>
     <string name="mobile_retry">Retry</string>
     <string name="mobile_account">Account</string>
+    <string name="mobile_switch_account">Switch account</string>
+    <string name="mobile_sign_in">Sign in</string>
     <string name="mobile_more">More options</string>
     <string name="mobile_fullscreen">Fullscreen</string>
     <string name="mobile_exit_fullscreen">Exit fullscreen</string>

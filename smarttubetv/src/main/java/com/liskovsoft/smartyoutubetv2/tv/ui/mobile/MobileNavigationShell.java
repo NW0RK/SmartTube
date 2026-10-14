@@ -7,6 +7,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -30,6 +31,7 @@ final class MobileNavigationShell extends FrameLayout {
     private final View content;
     private final LinearLayout navigation;
     private final int contentBottom;
+    private final java.util.Map<View, Integer> scrollPadding = new java.util.WeakHashMap<>();
     private boolean keyboard;
 
     MobileNavigationShell(Context c, View content, LinearLayout navigation) {
@@ -42,9 +44,9 @@ final class MobileNavigationShell extends FrameLayout {
         navigation.setGravity(Gravity.CENTER_VERTICAL);
         navigation.setPadding(MobileUi.dp(c, 8), MobileUi.dp(c, 8), MobileUi.dp(c, 8), MobileUi.dp(c, 8));
         GradientDrawable surface = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{c.getColor(R.color.mobile_navigation_top), c.getColor(R.color.mobile_navigation_bottom)});
+                new int[]{c.getColor(R.color.mobile_navigation_overlay_top), c.getColor(R.color.mobile_navigation_overlay_bottom)});
         surface.setCornerRadius(MobileUi.dp(c, 44));
-        surface.setStroke(MobileUi.dp(c, 1), 0x18ffffff);
+        surface.setStroke(MobileUi.dp(c, 1), c.getColor(R.color.mobile_divider));
         navigation.setBackground(surface);
         navigation.setElevation(MobileUi.dp(c, 8));
         LayoutParams params = new LayoutParams(-1, -2, Gravity.BOTTOM);
@@ -64,6 +66,7 @@ final class MobileNavigationShell extends FrameLayout {
         });
         // adjustResize supplies a smaller window on Android 8–10. Hide navigation above the IME.
         getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            updateClearance();
             if (android.os.Build.VERSION.SDK_INT >= 30) {
                 // The decor fits system windows and can consume IME visibility before it reaches us.
                 android.view.WindowInsets window = getRootWindowInsets();
@@ -91,14 +94,32 @@ final class MobileNavigationShell extends FrameLayout {
 
     private void updateClearance() {
         int clearance = keyboard ? 0 : navigation.getHeight() + MobileUi.dp(getContext(), 24);
+        boolean scrolling = padScrollingContent(content, clearance);
         content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(),
-                contentBottom + clearance);
+                contentBottom + (scrolling ? 0 : clearance));
+    }
+
+    private boolean padScrollingContent(View view, int clearance) {
+        if (view instanceof ScrollView || view instanceof androidx.recyclerview.widget.RecyclerView) {
+            if (!scrollPadding.containsKey(view)) scrollPadding.put(view, view.getPaddingBottom());
+            view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(),
+                    scrollPadding.get(view) + clearance);
+            ((ViewGroup) view).setClipToPadding(false);
+            return true;
+        }
+        boolean found = false;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++)
+                found |= padScrollingContent(group.getChildAt(i), clearance);
+        }
+        return found;
     }
 
     static LinearLayout destinations(MobileActivity activity) {
         LinearLayout row = new LinearLayout(activity);
         addDestination(row, activity, R.drawable.icon_home, R.string.header_home, MediaGroup.TYPE_HOME);
-        addDestination(row, activity, R.drawable.icon_subscriptions, R.string.header_subscriptions, MediaGroup.TYPE_SUBSCRIPTIONS);
+        addDestination(row, activity, R.drawable.icon_history, R.string.header_history, MediaGroup.TYPE_HISTORY);
         addDestination(row, activity, R.drawable.ic_user, R.string.mobile_you, YOU);
         return row;
     }
@@ -120,7 +141,7 @@ final class MobileNavigationShell extends FrameLayout {
             button.setTag(R.id.mobile_navigation_avatar, false);
             Drawable fallback = button.getContext().getDrawable(R.drawable.mobile_account).mutate();
             fallback.setBounds(0, 0, MobileUi.dp(button.getContext(), 24), MobileUi.dp(button.getContext(), 24));
-            button.setCompoundDrawables(null, fallback, null, null);
+            MobileUi.navigationIcon(button, fallback);
             MobileUi.navigationState(button, button.isSelected());
             return;
         }
@@ -128,7 +149,7 @@ final class MobileNavigationShell extends FrameLayout {
             @Override public void onResourceReady(@NonNull Drawable drawable, @Nullable Transition<? super Drawable> transition) {
                 button.setTag(R.id.mobile_navigation_avatar, true);
                 drawable.setBounds(0, 0, MobileUi.dp(button.getContext(), 24), MobileUi.dp(button.getContext(), 24));
-                button.setCompoundDrawables(null, drawable, null, null);
+                MobileUi.navigationIcon(button, drawable);
             }
             @Override protected void onResourceCleared(@Nullable Drawable placeholder) { }
             @Override public void onLoadFailed(@Nullable Drawable error) { }

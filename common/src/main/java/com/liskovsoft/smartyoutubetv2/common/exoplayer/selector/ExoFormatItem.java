@@ -76,6 +76,12 @@ public class ExoFormatItem implements FormatItem {
         return videoFormatItem;
     }
 
+    public static ExoFormatItem fromWithSelection(MediaTrack track, boolean selected) {
+        ExoFormatItem item = from(track);
+        if (item != null) item.mIsSelected = selected;
+        return item;
+    }
+
     public static ExoFormatItem from(Format format) {
         ExoFormatItem formatItem = new ExoFormatItem();
 

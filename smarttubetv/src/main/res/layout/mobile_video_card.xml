@@ -6,7 +6,8 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
         <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="@dimen/mobile_space" android:paddingEnd="8dp">
             <TextView android:id="@+id/mobile_card_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="2" android:ellipsize="end" android:textSize="@dimen/mobile_title_size" android:textStyle="bold" android:textColor="#FFFFFF"/>
-            <TextView android:id="@+id/mobile_card_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textSize="@dimen/mobile_meta_size" android:textColor="@color/mobile_text_secondary"/>
+            <TextView android:id="@+id/mobile_card_channel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:textSize="@dimen/mobile_meta_size" android:textColor="@color/mobile_text_secondary"/>
+            <TextView android:id="@+id/mobile_card_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:includeFontPadding="false" android:textSize="@dimen/mobile_meta_size" android:textColor="@color/mobile_text_secondary"/>
         </LinearLayout>
         <Button android:id="@+id/mobile_card_menu" android:layout_width="48dp" android:layout_height="48dp" android:text="⋮" android:textColor="#FFFFFF" android:background="?android:attr/selectableItemBackgroundBorderless" android:contentDescription="@string/mobile_more"/>
     </LinearLayout>

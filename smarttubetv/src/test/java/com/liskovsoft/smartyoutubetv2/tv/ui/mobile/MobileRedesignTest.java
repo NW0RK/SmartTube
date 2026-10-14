@@ -56,7 +56,7 @@ public class MobileRedesignTest {
         assertEquals(tabs.getHeight() + 24 + 7, content.getPaddingBottom());
     }
 
-    @Test public void largeTextNavigationRetainsLabelsAndClickTargets() {
+    @Test public void largeTextNavigationRetainsAccessibleLabelsAndClickTargets() {
         Context c = context();
         android.content.res.Configuration config = new android.content.res.Configuration(c.getResources().getConfiguration());
         config.fontScale = 2;
@@ -71,11 +71,36 @@ public class MobileRedesignTest {
             Button tab = (Button) tabs.getChildAt(i);
             assertTrue(tab.getWidth() >= 48);
             assertTrue(tab.getHeight() >= 48);
-            assertFalse(tab.getText().toString().isEmpty());
+            assertTrue(tab.getText().toString().isEmpty());
+            assertNotNull(tab.getContentDescription());
             tab.performClick();
         }
         assertEquals(3, clicks[0]);
         assertTrue(content.getPaddingBottom() >= tabs.getHeight());
+    }
+
+    @Test public void scrollingContentExtendsBehindNavigationAndLastItemsRemainReachable() {
+        Context c = context();
+        LinearLayout content = MobileUi.column(c), tabs = new LinearLayout(c);
+        ScrollView scroll = new ScrollView(c);
+        TextView items = new TextView(c);
+        items.setMinHeight(2000);
+        scroll.addView(items);
+        scroll.setPadding(0, 0, 0, 7);
+        content.addView(scroll, new LinearLayout.LayoutParams(-1, -1));
+        MobileUi.addNavigation(tabs, MobileUi.browseNavigation(c, R.drawable.icon_home, "Home", () -> {}));
+        MobileNavigationShell shell = new MobileNavigationShell(c, content, tabs);
+        layout(shell);
+        assertEquals(0, content.getPaddingBottom());
+        assertFalse(scroll.getClipToPadding());
+        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
+        assertEquals(640, scroll.getHeight());
+        shell.setKeyboardVisible(true);
+        assertEquals(7, scroll.getPaddingBottom());
+        shell.setKeyboardVisible(false);
+        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
+        layout(shell);
+        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
     }
 
     @Test public void channelHeaderDoesNotPresentVideoTitleOrDescriptionAsChannelIdentity() {
@@ -112,13 +137,14 @@ public class MobileRedesignTest {
         assertEquals(-1, MobileNavigationShell.requestedDestination(null, new Intent()));
     }
 
-    @Test public void watchToolbarUsesImageControlAndKeepsBackAction() {
-        int[] clicks = {0};
-        LinearLayout toolbar = MobileUi.watchToolbar(context(), () -> clicks[0]++);
-        assertTrue(toolbar.getChildAt(0) instanceof ImageButton);
-        assertNotNull(((ImageButton) toolbar.getChildAt(0)).getDrawable());
-        assertNotNull(toolbar.getChildAt(0).getContentDescription());
-        toolbar.getChildAt(0).performClick();
-        assertEquals(1, clicks[0]);
+    @Test public void watchToolbarKeepsBrandLogoWithoutDuplicateBackAction() {
+        LinearLayout toolbar = MobileUi.watchToolbar(context());
+        assertTrue(toolbar.getChildAt(0) instanceof android.widget.ImageView);
+        assertFalse(toolbar.getChildAt(0) instanceof ImageButton);
+        assertNotNull(((android.widget.ImageView) toolbar.getChildAt(0)).getDrawable());
+        TextView title = toolbar.findViewById(R.id.mobile_toolbar_title);
+        assertNotNull(title);
+        assertEquals("NikoTube", title.getText().toString());
+        assertFalse(toolbar.getChildAt(0).isClickable());
     }
 }

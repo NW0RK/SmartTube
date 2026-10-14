@@ -39,14 +39,20 @@ final class MobilePlayerIcon extends Drawable {
                 c.drawRoundRect(14, 3, 19, 21, 1, 1, paint);
                 break;
             case "down": line(c, 4, 8, 12, 16, 20, 8); break;
+            case "chevron-right": line(c, 9, 5, 16, 12, 9, 19); break;
             case "close": line(c, 5, 5, 19, 19); line(c, 19, 5, 5, 19); break;
             case "fullscreen":
                 line(c, 3, 9, 3, 3, 9, 3); line(c, 15, 3, 21, 3, 21, 9);
                 line(c, 3, 15, 3, 21, 9, 21); line(c, 15, 21, 21, 21, 21, 15);
                 break;
+            case "fullscreen-exit":
+                line(c, 3, 9, 9, 9, 9, 3); line(c, 15, 3, 15, 9, 21, 9);
+                line(c, 3, 15, 9, 15, 9, 21); line(c, 15, 21, 15, 15, 21, 15);
+                break;
             case "download":
                 line(c, 12, 3, 12, 16); line(c, 6, 10, 12, 16, 18, 10);
                 line(c, 4, 19, 4, 21, 20, 21, 20, 19); break;
+            case "save": line(c, 6, 3, 18, 3, 18, 21, 12, 17, 6, 21, 6, 3); break;
             case "share":
                 line(c, 14, 4, 21, 10, 14, 16, 14, 12);
                 c.drawPath(sharePath(), paint); break;
@@ -66,18 +72,20 @@ final class MobilePlayerIcon extends Drawable {
             case "like":
                 line(c, 7, 10, 11, 3, 14, 3, 14, 9, 21, 9, 19, 21, 7, 21, 7, 10);
                 c.drawRect(2, 10, 6, 21, paint); break;
+            case "heart": case "heart-filled":
+                if (name.equals("heart-filled")) paint.setStyle(Paint.Style.FILL);
+                Path heart = new Path();
+                heart.moveTo(12, 21);
+                heart.cubicTo(9, 18, 2, 13, 2, 8);
+                heart.cubicTo(2, 2, 9, 1, 12, 6);
+                heart.cubicTo(15, 1, 22, 2, 22, 8);
+                heart.cubicTo(22, 13, 15, 18, 12, 21);
+                heart.close();
+                c.drawPath(heart, paint); break;
             case "dislike":
                 c.rotate(180, 12, 12);
                 line(c, 7, 10, 11, 3, 14, 3, 14, 9, 21, 9, 19, 21, 7, 21, 7, 10);
                 c.drawRect(2, 10, 6, 21, paint); break;
-            case "back10": case "forward10":
-                if (name.equals("back10")) c.scale(-1, 1, 12, 12);
-                c.drawArc(3, 4, 21, 22, -85, 310, false, paint);
-                line(c, 12, 1, 16, 5, 11, 8);
-                if (name.equals("back10")) c.scale(-1, 1, 12, 12);
-                paint.setStyle(Paint.Style.FILL); paint.setTextSize(9);
-                paint.setTextAlign(Paint.Align.CENTER); paint.setTypeface(Typeface.DEFAULT_BOLD);
-                c.drawText("10", 12, 16, paint); break;
             default:
                 paint.setStyle(Paint.Style.FILL);
                 c.drawCircle(12, 4, 1.6f, paint); c.drawCircle(12, 12, 1.6f, paint);

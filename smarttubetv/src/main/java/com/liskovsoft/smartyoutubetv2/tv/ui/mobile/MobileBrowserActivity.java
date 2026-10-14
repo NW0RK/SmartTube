@@ -15,7 +15,7 @@ public class MobileBrowserActivity extends MobileActivity implements WebBrowserV
     public void onCreate(Bundle state) {
         super.onCreate(state);
         LinearLayout root = MobileUi.column(this);
-        root.addView(MobileUi.toolbar(this, "SmartTube", this::finish));
+        root.addView(MobileUi.toolbar(this, getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_brand_name), this::finish));
         web = new WebView(this);
         web.setWebViewClient(new WebViewClient());
         web.getSettings().setJavaScriptEnabled(true);
