@@ -79,7 +79,7 @@ public abstract class MobilePlayerEngine extends Fragment
         CustomOverridesRenderersFactory renderers =
                 new CustomOverridesRenderersFactory(requireContext());
         renderers.setEnableDecoderFallback(true);
-        mPlayer = mPlayerInitializer.createPlayer(requireContext(), renderers, selector);
+        mPlayer = mPlayerInitializer.createPlayer(requireContext(), renderers, selector, 1_000);
         playbackServiceListener = new Player.EventListener() {
             @Override
             public void onPlayerStateChanged(boolean playWhenReady, int state) {

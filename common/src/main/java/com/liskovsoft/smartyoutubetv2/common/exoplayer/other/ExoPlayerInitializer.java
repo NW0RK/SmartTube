@@ -49,7 +49,13 @@ public class ExoPlayerInitializer {
     }
 
     public SimpleExoPlayer createPlayer(Context context, DefaultRenderersFactory renderersFactory, DefaultTrackSelector trackSelector) {
-        DefaultLoadControl loadControl = createLoadControl();
+        return createPlayer(context, renderersFactory, trackSelector, 2_500);
+    }
+
+    /** Customize startup and seek buffering without changing recovery from playback stalls. */
+    public SimpleExoPlayer createPlayer(Context context, DefaultRenderersFactory renderersFactory,
+                                      DefaultTrackSelector trackSelector, int bufferForPlaybackMs) {
+        DefaultLoadControl loadControl = createLoadControl(bufferForPlaybackMs);
 
         // HDR fix?
         //trackSelector.setParameters(trackSelector.buildUponParameters().setTunnelingAudioSessionId(C.generateAudioSessionIdV21(context)));
@@ -94,10 +100,10 @@ public class ExoPlayerInitializer {
     }
 
     /**
-     * Increase player's min/max buffer size to 60 secs
+     * Apply the saved forward/back buffer preference and the requested startup threshold.
      * @return load control
      */
-    private DefaultLoadControl createLoadControl() {
+    private DefaultLoadControl createLoadControl(int bufferForPlaybackMs) {
         DefaultLoadControl.Builder baseBuilder = new DefaultLoadControl.Builder();
 
         // Default values
@@ -109,7 +115,6 @@ public class ExoPlayerInitializer {
         // Default values
         int minBufferMs = 30_000;
         int maxBufferMs = 30_000;
-        int bufferForPlaybackMs = 2_500;
         int bufferForPlaybackAfterRebufferMs = 5_000;
 
         switch (mPlayerData.getVideoBufferType()) {
