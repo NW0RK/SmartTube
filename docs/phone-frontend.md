@@ -35,12 +35,14 @@ repository. Its SHA-256 certificate fingerprint is
 Beta users install stable separately; stable installations signed with a different
 key need a one-time reinstall. Future builds must retain this signing identity.
 
-The exact custom MediaServiceCore commit
-`19132e0328e98d4933cda6e9d96199daaf4bc2e8` remains unavailable. The original
-submodule working trees and their staged deletions are preserved. See
-[dependency reconstruction](../patches/README.md) for the source repair retained
-for review. It is not recovery of the exact pinned commit. Stable publication
-remains withheld under the accepted plan's explicit dependency gate.
+The user approved replacing the unavailable custom dependency with public
+upstream pins and versioned NikoTube patches. MediaServiceCore uses `40fec843`
+and SharedModules uses `799cfae8`, matching the candidate's isolated build copies.
+Gradle verifies these revisions and applies the patch automatically. The
+original submodule working trees and their staged deletions are preserved.
+See [dependency setup](../patches/README.md). The previous exact-commit
+publication gate is removed; the remaining playback implementation is still
+unfinished.
 
 ## Watch page scroll position — October 14, 2026
 

@@ -47,6 +47,11 @@ Use Java 11 and an Android SDK, then build the beta debug APK:
 ./gradlew :smarttubetv:assembleStbetaDebug
 ```
 
+Build configuration checks the public upstream revisions in
+`dependencies.properties` and automatically applies the versioned NikoTube
+patches. Repeated builds preserve an already-patched dependency tree. See
+[dependency setup](patches/README.md) for the pins and isolated-checkout options.
+
 On Windows, use `gradlew.bat`. APKs are written to `smarttubetv/build/outputs/apk/stbeta/debug/`.
 
 Run the mobile regression tests with:

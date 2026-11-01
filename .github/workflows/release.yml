@@ -39,6 +39,7 @@ jobs:
       - name: Run regression tests with Java 11
         run: |
           chmod +x gradlew
+          # Settings verify the public dependency pins and apply NikoTube patches.
           ./gradlew --no-daemon :smarttubetv:testStbetaDebugUnitTest :smarttubetv:testStstableDebugUnitTest
       - name: Lint and build stable APK with Java 17
         run: |

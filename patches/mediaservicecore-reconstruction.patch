@@ -1,3 +1,18 @@
+diff --git a/core_settings.gradle b/core_settings.gradle
+index dc83dca9..778fd804 100644
+--- a/core_settings.gradle
++++ b/core_settings.gradle
+@@ -1,7 +1,9 @@
+ def rootDir = gradle.ext.mediaServiceCoreRoot
+ 
+ // prepare for git submodules
+-gradle.ext.sharedModulesRoot = new File(rootDir, '../SharedModules').exists() ? new File(rootDir, '../SharedModules') : new File(rootDir, './SharedModules')
++if (!gradle.ext.has('sharedModulesRoot')) {
++    gradle.ext.sharedModulesRoot = new File(rootDir, '../SharedModules').exists() ? new File(rootDir, '../SharedModules') : new File(rootDir, './SharedModules')
++}
+ apply from: new File(gradle.ext.sharedModulesRoot, 'core_settings.gradle')
+ 
+ include ':mediaserviceinterfaces', ':youtubeapi'
 diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/helpers/PublicationDateFormatter.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/helpers/PublicationDateFormatter.java
 new file mode 100644
 index 00000000..271a3678

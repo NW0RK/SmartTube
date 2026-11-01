@@ -1,0 +1,45 @@
+// Runs during settings evaluation, before any dependency build scripts are loaded.
+def dependencyLock = new Properties()
+new File(settingsDir, 'dependencies.properties').withInputStream { dependencyLock.load(it) }
+
+def git = { File directory, List arguments ->
+    def command = ['git', '-C', directory.absolutePath] + arguments.collect { it.toString() }
+    def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+    def output = process.inputStream.getText('UTF-8').trim()
+    [code: process.waitFor(), output: output]
+}
+
+def requireRevision = { String name, File directory, String expected ->
+    def top = git(directory, ['rev-parse', '--show-toplevel'])
+    if (top.code != 0 || new File(top.output).canonicalFile != directory.canonicalFile) {
+        throw new GradleException("${name} is not initialized at ${directory}. " +
+                'Clone with --recurse-submodules or initialize dependencies in a separate checkout.')
+    }
+    def revision = git(directory, ['rev-parse', 'HEAD'])
+    if (revision.code != 0 || revision.output != expected) {
+        throw new GradleException("${name} must use pinned upstream revision ${expected}; " +
+                "found ${revision.output}. Update the submodule in a clean checkout, " +
+                'or pass -PsharedModulesRoot and -PmediaServiceCoreRoot for isolated dependency copies.')
+    }
+}
+
+File shared = gradle.ext.sharedModulesRoot
+File media = gradle.ext.mediaServiceCoreRoot
+requireRevision('SharedModules', shared, dependencyLock.getProperty('sharedModulesRevision'))
+requireRevision('MediaServiceCore', media, dependencyLock.getProperty('mediaServiceCoreRevision'))
+
+File patch = new File(settingsDir, dependencyLock.getProperty('mediaServiceCorePatch'))
+if (!patch.isFile()) throw new GradleException("Missing NikoTube dependency patch: ${patch}")
+
+// A repeated Gradle invocation leaves an already-patched tree untouched.
+if (git(media, ['apply', '--reverse', '--check', patch.absolutePath]).code != 0) {
+    def check = git(media, ['apply', '--check', patch.absolutePath])
+    if (check.code != 0) {
+        throw new GradleException('Cannot apply the NikoTube dependency patch. No files were changed. ' +
+                'Existing dependency deletions or edits must be preserved; use isolated dependency ' +
+                "copies via -PsharedModulesRoot and -PmediaServiceCoreRoot.\n${check.output}")
+    }
+    def applied = git(media, ['apply', '--whitespace=nowarn', patch.absolutePath])
+    if (applied.code != 0) throw new GradleException("Dependency patch failed: ${applied.output}")
+    logger.lifecycle('Applied NikoTube customizations to pinned MediaServiceCore sources.')
+}

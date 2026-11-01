@@ -23,18 +23,21 @@ submodule staged deletions are excluded from the implementation commits.
 - Stable-only update checks, user-initiated downloads, APK validation and Android
   installer handoff through Settings → App updates.
 
-## Publication remains withheld
+## Dependency replacement and remaining work
 
-The accepted plan explicitly requires the exact custom dependency commit before
-publication. MediaServiceCore `19132e0328e98d4933cda6e9d96199daaf4bc2e8` remains
-unavailable. The candidate uses isolated upstream `40fec843` plus the versioned
-reconstruction patch; SharedModules uses `799cfae8`. Neither is presented as the
-original exact dependency set.
+The user approved replacing the unavailable custom dependency on November 2,
+2026. The parent gitlinks and `dependencies.properties` now pin public upstream
+MediaServiceCore `40fec843` and SharedModules `799cfae8`. Gradle checks those
+revisions and automatically applies the versioned NikoTube patch before loading
+dependency build scripts. Local builds and release CI use the same preparation.
+The signed candidate already used these upstream revisions and the recovered
+customizations. The replacement removes the missing-commit publication gate;
+it does not claim recovery of custom commit `19132e03`.
 
 The suggested `codex/integrate-smarttube-2026-11-02` branch was inspected. Its
 source matches the integration included in this branch; the remaining tree
-difference is `build-validation.log`. Its dependency pins are the same missing
-custom MediaServiceCore commit and SharedModules `890f94f`.
+difference is `build-validation.log`. That historical branch retains the old
+dependency pins; this implementation branch carries the approved replacements.
 
 Service ownership of player/controller/session, playback through watch
 destruction/Back/browsing, UI reattachment, background rendering suspension and
