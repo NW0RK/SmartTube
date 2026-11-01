@@ -179,7 +179,7 @@ public class VideoStateController extends BasePlayerController {
             getPlayer().setTitle(getContext().getString(R.string.player_sleep_timer)
                     + " (" + getContext().getResources().getQuantityString(R.plurals.hours, (int) sleepHours, Helpers.toString(sleepHours)) + ")");
             getPlayer().showOverlay(true);
-            Helpers.enableScreensaver(getActivity());
+            if (getActivity() != null) Helpers.enableScreensaver(getActivity());
         }
     }
 

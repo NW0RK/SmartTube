@@ -55,7 +55,7 @@ public class AutoFrameRateController extends BasePlayerController implements Aut
 
     @Override
     public void onInit() {
-        mAutoFrameRateHelper.saveOriginalState(getActivity());
+        if (getActivity() != null) mAutoFrameRateHelper.saveOriginalState(getActivity());
         mStateController = getController(VideoStateController.class);
         mHQDialogController = getController(HQDialogController.class);
     }
@@ -179,6 +179,7 @@ public class AutoFrameRateController extends BasePlayerController implements Aut
     }
 
     private void restoreAfr() {
+        if (getActivity() == null) return;
         String msg = "Restoring original frame rate...";
         Log.d(TAG, msg);
         mAutoFrameRateHelper.restoreOriginalState(getActivity());
@@ -186,6 +187,7 @@ public class AutoFrameRateController extends BasePlayerController implements Aut
     }
 
     private void applyAfr(FormatItem videoFormat, boolean force) {
+        if (getActivity() == null) return;
         if (videoFormat != null) {
             String msg = String.format("Applying afr... fps: %s, resolution: %sx%s, activity: %s",
                     videoFormat.getFrameRate(),

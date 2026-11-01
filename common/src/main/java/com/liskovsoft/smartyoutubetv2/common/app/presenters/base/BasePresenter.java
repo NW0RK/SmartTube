@@ -238,6 +238,7 @@ public abstract class BasePresenter<T> implements Presenter<T> {
      * Check that view's activity is alive
      */
     private static <T> boolean checkView(T view) {
+        if (view instanceof com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) return true;
         Activity activity = getViewActivity(view);
 
         return Utils.checkActivity(activity);
@@ -247,7 +248,9 @@ public abstract class BasePresenter<T> implements Presenter<T> {
     private static <T> Activity getViewActivity(T view) {
         Activity activity = null;
 
-        if (view instanceof Fragment) { // regular fragment
+        if (view instanceof com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) {
+            activity = ((com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) view).getPlaybackActivity();
+        } else if (view instanceof Fragment) { // regular fragment
             activity = ((Fragment) view).getActivity();
         } else if (view instanceof android.app.Fragment) { // dialog fragment
             activity = ((android.app.Fragment) view).getActivity();

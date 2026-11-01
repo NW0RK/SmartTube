@@ -1,50 +1,33 @@
-# NikoTube 32.69 release checkpoint
+# NikoTube 32.69
 
-Package: `org.smarttube.stable`; version code: `2459`.
+Stable package: `org.smarttube.stable`, version code `2459`. Requires Android 8.0
+or newer. Install `NikoTube_stable_32.69_universal.apk` from this release.
 
-The stable release variant assembled successfully. Its universal APK is signed
-with the persistent NikoTube release key and has a generated update manifest and
-SHA-256 checksum file. Local assets are under `build/release-assets/`.
-No additional unit tests or device checks ran after the instruction to stop.
-APK signing and package metadata inspection are part of packaging.
+- Opaque YouTube-style dark interface, full-width labeled navigation, flatter
+  watch details and recommendations, improved spacing and smoother controls.
+- Service-owned background audio through Home, Back, browsing and screen lock,
+  notification playback controls, and a Return to player toolbar action.
+- Each new video prefers the smallest supported 1080p video track by advertised
+  bitrate. Manual quality choices stay with the current video.
+- Settings → App updates checks NikoTube's stable release feed. Downloads begin
+  only when requested; APK checksums, package, version and signature are checked
+  before Android asks for installation confirmation.
 
-The source implementation is on `codex/nikotube-redesign-release`. Dedicated
-GitHub signing secrets are configured on `NW0RK/SmartTube`. The original
-submodule staged deletions are excluded from the implementation commits.
+Beta users install this stable package separately once. Older stable installs
+signed with another key need a one-time reinstall. Subsequent stable releases
+retain the new NikoTube signing identity and update in place from App updates.
+Keep your existing beta installation until any data you need has been migrated.
 
-## Included in the APK
+Public update metadata: [nikotube-stable.json](https://github.com/NW0RK/SmartTube/releases/latest/download/nikotube-stable.json).
+Use `SHA256SUMS.txt` to check the APK download.
 
-- Opaque dark surfaces, full-width labeled navigation, flatter watch details,
-  corrected spacing, and interruptible eased control fades.
-- Supported 1080p selection ranked by advertised video bitrate, with lower-tier
-  fallback and per-video manual quality choices.
-- Home/screen-lock audio continuation and persistent user pause intent when
-  returning to the existing watch task.
-- Stable-only update checks, user-initiated downloads, APK validation and Android
-  installer handoff through Settings → App updates.
+The release variant compiles and is signed with the persistent NikoTube release
+key. The final service migration did not receive another automated or device
+test pass. Earlier UI/quality/updater checks passed 75 mobile tests and were
+exercised on a Galaxy A52; those checks predate the service migration.
 
-## Dependency replacement and remaining work
-
-The user approved replacing the unavailable custom dependency on November 2,
-2026. The parent gitlinks and `dependencies.properties` now pin public upstream
-MediaServiceCore `40fec843` and SharedModules `799cfae8`. Gradle checks those
-revisions and automatically applies the versioned NikoTube patch before loading
-dependency build scripts. Local builds and release CI use the same preparation.
-The signed candidate already used these upstream revisions and the recovered
-customizations. The replacement removes the missing-commit publication gate;
-it does not claim recovery of custom commit `19132e03`.
-
-The suggested `codex/integrate-smarttube-2026-11-02` branch was inspected. Its
-source matches the integration included in this branch; the remaining tree
-difference is `build-validation.log`. That historical branch retains the old
-dependency pins; this implementation branch carries the approved replacements.
-
-Service ownership of player/controller/session, playback through watch
-destruction/Back/browsing, UI reattachment, background rendering suspension and
-the complete updater upgrade exercise are unfinished. There is no public
-`v32.69` release or live update manifest. Do not describe this checkpoint as the
-complete accepted implementation.
-
-Beta users will install stable separately. Stable installations signed with a
-different key require a one-time reinstall. Keep the new persistent signing key
-for subsequent in-place updates.
+The unavailable custom dependency has been replaced by pinned public upstream
+MediaServiceCore `40fec843` and SharedModules `799cfae8`, with versioned NikoTube
+patches applied automatically during build configuration. Original local
+submodule deletions remain untouched. The release workflow is manually triggered
+for a version tag, with regression tests enabled by default for future releases.

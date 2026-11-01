@@ -124,6 +124,21 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
         return videos.values().stream().allMatch(List::isEmpty);
     }
 
+    List<VideoGroup> snapshotGroups() {
+        List<VideoGroup> result = new ArrayList<>();
+        for (VideoGroup original : groups) {
+            List<Video> items = videos.get(original.getId());
+            if (items == null || items.isEmpty()) continue;
+            VideoGroup copy = VideoGroup.from(new ArrayList<>(items));
+            copy.setId(original.getId());
+            copy.setTitle(original.getTitle());
+            copy.setType(original.getType());
+            copy.setPosition(original.getPosition());
+            result.add(copy);
+        }
+        return result;
+    }
+
     public boolean isHeading(int p) {
         return !(rows.get(p) instanceof Video);
     }

@@ -26,8 +26,8 @@ $manifest = [ordered]@{
     apkSize = (Get-Item -LiteralPath $Apk).Length
     apkSha256 = $hash
     releaseUrl = "https://github.com/NW0RK/SmartTube/releases/tag/$Tag"
-    changelog = @('Opaque mobile interface and smoother playback controls', 'Per-video 1080p selection with lower data use', 'In-app stable release updates')
+    changelog = @('Opaque mobile interface and smoother playback controls', 'Service-owned background audio and notification controls', 'Per-video 1080p selection with lower data use', 'In-app stable release updates')
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $OutputDirectory 'nikotube-stable.json')
-"$hash  $asset" | Set-Content -Encoding ascii -LiteralPath (Join-Path $OutputDirectory 'SHA256SUMS.txt')
+[IO.File]::WriteAllText((Join-Path $OutputDirectory 'SHA256SUMS.txt'), "$hash  $asset`n", [Text.Encoding]::ASCII)

@@ -1,4 +1,5 @@
 <resources>
+    <item name="mobile_return_to_player" type="id" />
     <item name="mobile_controls_requested" type="id"/>
     <item name="mobile_enter_animating" type="id"/>
     <item name="mobile_toolbar_title" type="id"/>

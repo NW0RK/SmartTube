@@ -180,6 +180,21 @@ public class AppDialogUtil {
         String categoryTitle = context.getString(R.string.category_background_playback);
 
         List<OptionItem> options = new ArrayList<>();
+        if (!Helpers.isAndroidTV(context)) {
+            options.add(UiOptionItem.from(context.getString(R.string.option_background_playback_only_audio), item -> {
+                playerData.setBackgroundMode(PlayerData.BACKGROUND_MODE_SOUND);
+                generalData.setBackgroundPlaybackShortcut(GeneralData.BACKGROUND_PLAYBACK_SHORTCUT_HOME);
+                onSetCallback.run();
+            }, playerData.getBackgroundMode() != PlayerData.BACKGROUND_MODE_PIP));
+            if (Helpers.isPictureInPictureSupported(context)) {
+                options.add(UiOptionItem.from(context.getString(R.string.option_background_playback_pip), item -> {
+                    playerData.setBackgroundMode(PlayerData.BACKGROUND_MODE_PIP);
+                    generalData.setBackgroundPlaybackShortcut(GeneralData.BACKGROUND_PLAYBACK_SHORTCUT_HOME);
+                    onSetCallback.run();
+                }, playerData.getBackgroundMode() == PlayerData.BACKGROUND_MODE_PIP));
+            }
+            return OptionCategory.from(BACKGROUND_PLAYBACK_ID, OptionCategory.TYPE_RADIO_LIST, categoryTitle, options);
+        }
         options.add(UiOptionItem.from(context.getString(R.string.option_background_playback_off),
                 optionItem -> {
                     playerData.setBackgroundMode(PlayerData.BACKGROUND_MODE_DEFAULT);

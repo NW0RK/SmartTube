@@ -248,6 +248,14 @@ final class MobileUi {
         name.setTypeface(null, android.graphics.Typeface.BOLD);
         name.setMaxLines(2);
         row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        if (!(c instanceof MobilePlaybackActivity)) {
+            android.widget.ImageButton player = iconButton(c, android.R.drawable.ic_media_play,
+                    "Return to player", () -> c.startActivity(new android.content.Intent(c, MobilePlaybackActivity.class)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)));
+            player.setId(R.id.mobile_return_to_player);
+            player.setVisibility(MobilePlaybackService.hasSession() ? View.VISIBLE : View.GONE);
+            row.addView(player, new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
+        }
         return row;
     }
 

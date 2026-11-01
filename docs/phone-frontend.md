@@ -11,12 +11,16 @@ now has Settings → App updates, daily metadata checks, user-initiated download
 checksum/package/version/signature validation, and Android installer handoff.
 Beta and F-Droid packages receive no stable update offers.
 
-Home and screen-lock audio continue, explicit pauses survive returning to the
-existing task, and swipe-away requests pause and service cleanup. The service
-still protects a player owned by the watch fragment. Moving ownership into the
-service, preserving playback after watch destruction/Back/browsing, cached UI
-reattachment, and background rendering suspension remain unfinished. Those
-behaviors must not be advertised as implemented.
+MobilePlaybackService now owns the player, controller, media session and cached
+presenter state through MobilePlaybackSession. Watch screens bind to that
+session and attach their surface; destroying a watch screen detaches its UI.
+Home, Back, browsing, screen lock and Activity recreation preserve playback and
+pause intent. Background video rendering is disabled until the watch screen or
+PiP is visible. Notification controls provide playback, skip and Stop actions;
+other mobile toolbars offer Return to player. Recent-app swipe-away and Stop
+release the session. Headphone disconnection pauses audio, and the partial wake
+lock is held only while playing or buffering. Mobile background choices are
+Audio only and PiP, with old Default/Off values interpreted as Audio only.
 
 Before the user's instruction to stop testing, all 75 mobile tests passed under
 Java 11 and stable debug assembly succeeded against isolated upstream dependency
@@ -40,9 +44,7 @@ upstream pins and versioned NikoTube patches. MediaServiceCore uses `40fec843`
 and SharedModules uses `799cfae8`, matching the candidate's isolated build copies.
 Gradle verifies these revisions and applies the patch automatically. The
 original submodule working trees and their staged deletions are preserved.
-See [dependency setup](../patches/README.md). The previous exact-commit
-publication gate is removed; the remaining playback implementation is still
-unfinished.
+See [dependency setup](../patches/README.md). The previous exact-commit publication gate is removed. The final service migration was built without another automated or device test pass.
 
 ## Watch page scroll position — October 14, 2026
 

@@ -28,6 +28,7 @@ import com.liskovsoft.smartyoutubetv2.tv.ui.playback.previewtimebar.StoryboardMa
 import java.util.*;
 
 public class MobilePlaybackFragment extends MobilePlayerEngine {
+    private String shownVideoId;
     private LinearLayout root, details, bar, chatList;
     private FrameLayout controls;
     private ChatReceiver chatReceiver;
@@ -468,14 +469,18 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     @Override
     public void onActivityCreated(Bundle state) {
         super.onActivityCreated(state);
-        mPlaybackPresenter.onViewInitialized();
         initializePlayer();
         root.setKeepScreenOn(true);
+        handler.post(update);
+    }
+
+    void restoreVideoIfNeeded() {
         if (restoredId != null && mPlaybackPresenter.getVideo() == null)
             mPlaybackPresenter.openVideo(
                     restoredVideo == null ? Video.from(restoredId) : restoredVideo);
-        handler.post(update);
     }
+
+    void clearRestoredPosition() { restoredPosition = 0; }
 
     @Override
     protected void onPlayerCreated() {
@@ -762,10 +767,9 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
 
     @Override
     public void setVideo(Video v) {
-        Video previous = getVideo();
-        boolean changed = v == null || previous == null || !Objects.equals(previous.videoId, v.videoId);
+        boolean changed = v == null || !Objects.equals(shownVideoId, v.videoId);
+        shownVideoId = v == null ? null : v.videoId;
         if (changed) {
-            resetMobileQuality();
             suggestionsRequested = false;
             videoLikeCount = null;
             resetSuggestedPosition();
@@ -778,7 +782,6 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             v.pendingPosMs = restoredPosition;
             restoredPosition = 0;
         }
-        mExoPlayerController.setVideo(v);
         updateLikeButton();
         if (title != null && v != null) {
             title.setText(v.getTitleFull());
@@ -1128,8 +1131,6 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         super.onResume();
         if (mPlayer != null) {
             resumePlaybackService();
-            mPlaybackPresenter.setView(this);
-            mPlaybackPresenter.onViewResumed();
         }
     }
 
@@ -1181,7 +1182,8 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         if (taps != null) taps.controller(null);
         overlay.player(null).playerView(null).performListener(null);
         storyboard.init(null, 0);
-        stopPlayback();
+        if (bufferingIndicator != null) bufferingIndicator.release();
+        if (debugManager != null) { debugManager.show(false); debugManager = null; }
         buttons.clear();
         avatar = preview = poster = null;
         seekPreview = null;

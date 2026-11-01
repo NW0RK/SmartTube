@@ -304,6 +304,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                         metrics.widthPixels * 9 / 16 + MobileUi.dp(this, 56));
                 com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
                         com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(this).getPlayer();
+                if (player instanceof MobilePlaybackSession) player = ((MobilePlaybackSession) player).ui();
                 if (player instanceof MobilePlaybackFragment) {
                     int bottom = ((MobilePlaybackFragment) player).getVideoBottomOnScreen();
                     if (bottom > 0 && bottom < metrics.heightPixels) videoHeight = bottom;
@@ -348,6 +349,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private void updatePlayerCommentsWidth(int width) {
         com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
                 com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(this).getPlayer();
+        if (player instanceof MobilePlaybackSession) player = ((MobilePlaybackSession) player).ui();
         if (player instanceof MobilePlaybackFragment)
             ((MobilePlaybackFragment) player).setCommentsPanelWidth(width);
     }

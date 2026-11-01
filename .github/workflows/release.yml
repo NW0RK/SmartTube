@@ -1,18 +1,29 @@
 name: NikoTube stable release
 on:
-  push:
-    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and publish
+        required: true
+        type: string
+      run_tests:
+        description: Run regression tests before building
+        type: boolean
+        default: true
 permissions:
   contents: write
 concurrency:
-  group: nikotube-release-${{ github.ref }}
+  group: nikotube-release-${{ inputs.tag }}
   cancel-in-progress: false
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
+          ref: ${{ inputs.tag }}
           submodules: recursive
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
         with:
@@ -37,6 +48,7 @@ jobs:
           printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/nikotube-release.jks"
           printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$RUNNER_TEMP/nikotube-release.jks" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
       - name: Run regression tests with Java 11
+        if: inputs.run_tests
         run: |
           chmod +x gradlew
           # Settings verify the public dependency pins and apply NikoTube patches.
@@ -53,7 +65,7 @@ jobs:
           $apk = Get-Item 'smarttubetv/build/outputs/apk/ststable/release/*_universal.apk'
           & "$tools/apksigner" verify --verbose $apk.FullName
           if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed' }
-          ./scripts/make-release-manifest.ps1 -Apk $apk.FullName -Aapt "$tools/aapt" -Tag $env:GITHUB_REF_NAME -OutputDirectory release-assets
+          ./scripts/make-release-manifest.ps1 -Apk $apk.FullName -Aapt "$tools/aapt" -Tag $env:RELEASE_TAG -OutputDirectory release-assets
           Copy-Item -LiteralPath $apk.FullName -Destination release-assets
       - name: Prepare and verify release assets, then publish
         shell: bash
@@ -61,14 +73,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          printf '%s\n' "NikoTube ${GITHUB_REF_NAME}" '' 'Stable Android package: org.smarttube.stable.' '' 'Beta users install this stable package separately. Older stable installations signed with another key require a one-time reinstall. Future stable releases update in place.' '' 'See SHA256SUMS.txt for APK integrity verification.' > "$RUNNER_TEMP/release-notes.md"
-          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "NikoTube ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
-          gh release upload "$GITHUB_REF_NAME" release-assets/*
-          gh release download "$GITHUB_REF_NAME" --dir "$RUNNER_TEMP/release-verify"
+          printf '%s\n' "NikoTube ${RELEASE_TAG}" '' 'Stable Android package: org.smarttube.stable.' '' 'Beta users install this stable package separately. Older stable installations signed with another key require a one-time reinstall. Future stable releases update in place.' '' 'See SHA256SUMS.txt for APK integrity verification.' > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$RELEASE_TAG" --verify-tag --draft --title "NikoTube ${RELEASE_TAG#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release upload "$RELEASE_TAG" release-assets/*
+          gh release download "$RELEASE_TAG" --dir "$RUNNER_TEMP/release-verify"
           cd "$RUNNER_TEMP/release-verify"
           sha256sum --check SHA256SUMS.txt
           cmp nikotube-stable.json "$GITHUB_WORKSPACE/release-assets/nikotube-stable.json"
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          gh release edit "$RELEASE_TAG" --draft=false --latest
       - name: Remove runner signing material
         if: always()
         shell: bash

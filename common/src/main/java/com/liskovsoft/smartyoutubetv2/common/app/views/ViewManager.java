@@ -438,6 +438,7 @@ public class ViewManager {
     }
 
     public boolean isVisible(Object view) {
+        if (view instanceof PersistentPlaybackView) return ((PersistentPlaybackView) view).isPlaybackUiVisible();
         if (view instanceof androidx.fragment.app.FragmentActivity) {
             return ((androidx.fragment.app.FragmentActivity) view).getLifecycle()
                     .getCurrentState().isAtLeast(Lifecycle.State.STARTED);
@@ -462,6 +463,10 @@ public class ViewManager {
     }
 
     public static MotherActivity getMotherActivity(Object view) {
+        if (view instanceof PersistentPlaybackView) {
+            android.app.Activity activity = ((PersistentPlaybackView) view).getPlaybackActivity();
+            return activity instanceof MotherActivity ? (MotherActivity) activity : null;
+        }
         MotherActivity motherActivity = view instanceof MotherActivity ? (MotherActivity) view : null;
 
         if (view instanceof Fragment && ((Fragment) view).getActivity() instanceof MotherActivity) {

@@ -133,6 +133,9 @@ public class PlaybackPresenter extends BasePresenter<PlaybackView> implements Pl
     }
 
     public boolean isRunningInBackground() {
+        if (getView() instanceof com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) {
+            return getView().isEngineInitialized() && !((com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) getView()).isPlaybackUiVisible();
+        }
         return getView() != null &&
                 getView().isEngineBlocked() &&
                 //getView().getBackgroundMode() != PlayerEngine.BACKGROUND_MODE_DEFAULT &&
@@ -211,6 +214,11 @@ public class PlaybackPresenter extends BasePresenter<PlaybackView> implements Pl
     }
 
     public Activity getActivity() {
+        if (getView() instanceof com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) {
+            com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView player =
+                    (com.liskovsoft.smartyoutubetv2.common.app.views.PersistentPlaybackView) getView();
+            return player.isPlaybackUiVisible() ? player.getPlaybackActivity() : null;
+        }
         return getContext() instanceof Activity ? (Activity) getContext() : null;
     }
 

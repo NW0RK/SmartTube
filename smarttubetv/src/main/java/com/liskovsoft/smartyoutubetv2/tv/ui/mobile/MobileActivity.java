@@ -30,6 +30,8 @@ public abstract class MobileActivity extends MotherActivity {
         super.onResume();
         stopWatchForBrowsing();
         getViewManager().addTop(this);
+        android.view.View player = findViewById(R.id.mobile_return_to_player);
+        if (player != null) player.setVisibility(MobilePlaybackService.hasSession() ? android.view.View.VISIBLE : android.view.View.GONE);
     }
 
     // Playback intent belongs to the user; Home and screen lock never toggle it.
@@ -39,19 +41,6 @@ public abstract class MobileActivity extends MotherActivity {
                 || this instanceof MobileChannelActivity
                 || this instanceof MobileUploadsActivity) {
             MobileDialogActivity.dismissComments(this);
-            com.liskovsoft.smartyoutubetv2.common.app.views.PlaybackView player =
-                    com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(
-                                    this)
-                            .getView();
-            if (player instanceof MobilePlaybackFragment && player.isEngineInitialized()) {
-                com.liskovsoft.smartyoutubetv2.common.app.presenters.AppDialogPresenter.instance(
-                                this)
-                        .closeDialog();
-                android.app.Activity activity = ((MobilePlaybackFragment) player).getActivity();
-                if (activity instanceof MobileActivity)
-                    ((MobileActivity) activity).finishForNavigation();
-                else player.finish();
-            }
         }
     }
 

@@ -1,98 +1,132 @@
 package com.liskovsoft.smartyoutubetv2.tv.ui.mobile;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.content.Context;
-import android.content.Intent;
-import android.os.IBinder;
-import android.os.PowerManager;
+import android.app.*;
+import android.content.*;
+import android.media.AudioManager;
+import android.os.*;
 import android.support.v4.media.session.MediaSessionCompat;
-import android.util.Log;
-
 import androidx.core.app.NotificationCompat;
-
 import com.liskovsoft.smartyoutubetv2.tv.R;
 
-/** Protects the phone's existing player while playing, including with the display off. */
+/** Owns the phone player independently of the watch Activity and its surface. */
 public class MobilePlaybackService extends Service {
     private static final String CHANNEL = "mobile_playback";
-    private static final String SESSION = "session";
     private static final int NOTIFICATION_ID = 1002;
+    private static MobilePlaybackService current;
+    private MobilePlaybackSession playback;
     private PowerManager.WakeLock wakeLock;
-    private android.support.v4.media.session.MediaControllerCompat mediaController;
+    private MediaSessionCompat.Token token;
+    private boolean active, started;
+    private final LocalBinder binder = new LocalBinder();
+    private final BroadcastReceiver noisy = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (playback != null) playback.setPlayWhenReady(false);
+        }
+    };
 
-    @Override
-    public void onCreate() {
+    public final class LocalBinder extends Binder {
+        MobilePlaybackSession session() {
+            if (playback == null) playback = new MobilePlaybackSession(MobilePlaybackService.this);
+            return playback;
+        }
+    }
+
+    static boolean hasSession() {
+        return current != null && current.playback != null && current.playback.isEngineInitialized()
+                && current.playback.getVideo() != null;
+    }
+
+    @Override public void onCreate() {
         super.onCreate();
-        NotificationManager notifications = getSystemService(NotificationManager.class);
-        notifications.createNotificationChannel(new NotificationChannel(
-                CHANNEL, getString(R.string.category_background_playback),
-                NotificationManager.IMPORTANCE_LOW));
+        current = this;
+        getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(
+                CHANNEL, getString(R.string.category_background_playback), NotificationManager.IMPORTANCE_LOW));
         wakeLock = getSystemService(PowerManager.class).newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK, getPackageName() + ":mobile-playback");
         wakeLock.setReferenceCounted(false);
+        registerReceiver(noisy, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        PendingIntent openPlayer = PendingIntent.getActivity(this, 0,
-                new Intent(this, MobilePlaybackActivity.class),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        NotificationCompat.Builder notification = new NotificationCompat.Builder(this, CHANNEL)
-                .setSmallIcon(R.drawable.icon_notification)
-                .setContentTitle(getApplicationInfo().loadLabel(getPackageManager()))
-                .setContentText(getString(R.string.category_background_playback))
-                .setContentIntent(openPlayer)
-                .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-                .setOngoing(true)
-                .setSilent(true);
-        MediaSessionCompat.Token token = intent == null ? null : intent.getParcelableExtra(SESSION);
-        if (token != null) {
-            try { mediaController = new android.support.v4.media.session.MediaControllerCompat(this, token); }
-            catch (Exception e) { Log.w("MobilePlaybackService", "Cannot connect playback controls", e); }
+    @Override public IBinder onBind(Intent intent) { return binder; }
+
+    void updateProtection(boolean playingOrBuffering, MediaSessionCompat.Token sessionToken) {
+        active = playingOrBuffering;
+        token = sessionToken;
+        if (active && !started) {
+            startForegroundService(new Intent(this, MobilePlaybackService.class));
+            started = true;
         }
-        if (token != null) notification.setStyle(
-                new androidx.media.app.NotificationCompat.MediaStyle().setMediaSession(token));
-        startForeground(NOTIFICATION_ID, notification.build());
-        if (!wakeLock.isHeld()) wakeLock.acquire();
-        // The Activity owns playback; restarting this service alone cannot restore it.
+        if (active && !wakeLock.isHeld()) wakeLock.acquire();
+        if (!active && wakeLock.isHeld()) wakeLock.release();
+        if (started) startForeground(NOTIFICATION_ID, notification());
+    }
+
+    private PendingIntent command(String action) {
+        return PendingIntent.getService(this, action.hashCode(),
+                new Intent(this, MobilePlaybackService.class).setAction(action),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    void refreshNotification() {
+        if (started) getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, notification());
+    }
+
+    private Notification notification() {
+        PendingIntent open = PendingIntent.getActivity(this, 0,
+                new Intent(this, MobilePlaybackActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        boolean playing = playback != null && playback.getPlayWhenReady();
+        CharSequence title = playback != null && playback.getVideo() != null
+                ? playback.getVideo().getTitleFull() : getApplicationInfo().loadLabel(getPackageManager());
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL)
+                .setSmallIcon(R.drawable.icon_notification).setContentTitle(title)
+                .setContentText(playback != null && playback.getVideo() != null ? playback.getVideo().getAuthor() : null)
+                .setContentIntent(open).setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+                .setOnlyAlertOnce(true).setSilent(true).setOngoing(active)
+                .setDeleteIntent(command("stop"))
+                .addAction(android.R.drawable.ic_media_previous, "Previous", command("previous"))
+                .addAction(playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
+                        playing ? "Pause" : "Play", command(playing ? "pause" : "play"))
+                .addAction(android.R.drawable.ic_media_next, "Next", command("next"))
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", command("stop"));
+        if (token != null) builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                .setMediaSession(token).setShowActionsInCompactView(0, 1, 2));
+        return builder.build();
+    }
+
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        if (playback == null || !playback.isEngineInitialized()) { stopSelf(); return START_NOT_STICKY; }
+        String action = intent == null ? null : intent.getAction();
+        if ("stop".equals(action)) { stopPlayback(); return START_NOT_STICKY; }
+        if ("pause".equals(action)) playback.setPlayWhenReady(false);
+        if ("play".equals(action)) playback.setPlayWhenReady(true);
+        if ("previous".equals(action)) playback.mPlaybackPresenter.onPreviousClicked();
+        if ("next".equals(action)) playback.mPlaybackPresenter.onNextClicked();
+        started = true;
+        startForeground(NOTIFICATION_ID, notification());
         return START_NOT_STICKY;
     }
 
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        if (mediaController != null) mediaController.getTransportControls().pause();
-        stopSelf();
-    }
-
-    @Override
-    public void onDestroy() {
-        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+    void stopPlayback() {
+        MobilePlaybackSession old = playback;
+        android.app.Activity activity = old == null ? null : old.getPlaybackActivity();
+        playback = null;
+        if (old != null) old.close();
+        active = started = false;
+        if (wakeLock.isHeld()) wakeLock.release();
         stopForeground(true);
+        stopSelf();
+        if (activity != null && !activity.isFinishing()) activity.finish();
+    }
+
+    @Override public void onTaskRemoved(Intent rootIntent) { stopPlayback(); }
+
+    @Override public void onDestroy() {
+        if (playback != null) { playback.close(); playback = null; }
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        unregisterReceiver(noisy);
+        stopForeground(true);
+        if (current == this) current = null;
         super.onDestroy();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    static boolean start(Context context, MediaSessionCompat.Token token) {
-        try {
-            context.getApplicationContext().startForegroundService(
-                    new Intent(context, MobilePlaybackService.class).putExtra(SESSION, token));
-            return true;
-        } catch (IllegalStateException e) {
-            // Android can reject a late callback after an external link opens on a locked phone.
-            // The player retries when its Activity resumes.
-            Log.w("MobilePlaybackService", "Playback service start deferred until resume", e);
-            return false;
-        }
-    }
-
-    static void stop(Context context) {
-        context.getApplicationContext().stopService(new Intent(context, MobilePlaybackService.class));
     }
 }
