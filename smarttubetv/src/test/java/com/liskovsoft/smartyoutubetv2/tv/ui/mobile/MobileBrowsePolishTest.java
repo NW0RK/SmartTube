@@ -122,9 +122,9 @@ public class MobileBrowsePolishTest {
     public void navigationAndChipsExposeSelectionAndDisabledState() {
         Context c = context();
         Button tab = MobileUi.browseNavigation(c, R.drawable.icon_home, "Home", () -> {});
-        assertEquals("", tab.getText().toString());
+        assertEquals("Home", tab.getText().toString());
         assertEquals("Home", tab.getContentDescription());
-        assertNotNull(tab.getForeground());
+        assertNotNull(tab.getCompoundDrawables()[1]);
         LinearLayout navigation = new LinearLayout(c);
         MobileUi.addNavigation(navigation, tab);
         LinearLayout.LayoutParams spacing = (LinearLayout.LayoutParams) tab.getLayoutParams();
@@ -134,14 +134,14 @@ public class MobileBrowsePolishTest {
         assertTrue(tab.getMinHeight() >= MobileUi.dp(c, 48));
         MobileUi.navigationState(tab, true);
         assertTrue(tab.isSelected());
-        assertEquals(MobileUi.accent(c), tab.getCurrentTextColor());
+        assertEquals(android.graphics.Color.WHITE, tab.getCurrentTextColor());
         MobileUi.navigationState(tab, false);
         assertFalse(tab.isSelected());
         tab.setEnabled(false);
         assertFalse(tab.isEnabled());
         Button chip = MobileUi.browseButton(c, "Subscriptions", () -> {});
         chip.setSelected(true);
-        assertEquals(MobileUi.accent(c), chip.getCurrentTextColor());
+        assertEquals(android.graphics.Color.BLACK, chip.getCurrentTextColor());
         chip.setEnabled(false);
         assertEquals(c.getColor(R.color.mobile_text_secondary), chip.getCurrentTextColor());
     }

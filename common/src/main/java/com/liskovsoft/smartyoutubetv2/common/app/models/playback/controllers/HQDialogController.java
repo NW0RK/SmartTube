@@ -92,7 +92,7 @@ public class HQDialogController extends BasePlayerController {
         }
 
         FormatItem formatItem = UiOptionItem.toFormat(option);
-        getPlayer().setFormat(formatItem);
+        getPlayer().selectUserFormat(formatItem);
         persistFormat(formatItem);
 
         if (getPlayerData().getFormat(formatItem.getType()).isPreset()) {
@@ -111,6 +111,7 @@ public class HQDialogController extends BasePlayerController {
     }
 
     private void persistFormat(FormatItem formatItem) {
+        if (formatItem.getType() == FormatItem.TYPE_VIDEO && getPlayer().usesPerVideoQuality()) return;
         if (formatItem.getType() == FormatItem.TYPE_VIDEO) {
             if (!getPlayerData().getFormat(FormatItem.TYPE_VIDEO).isPreset()) {
                 getPlayerData().setFormat(formatItem);

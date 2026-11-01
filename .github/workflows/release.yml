@@ -1,0 +1,66 @@
+name: NikoTube stable release
+on:
+  push:
+    tags: ['v[0-9]*']
+permissions:
+  contents: write
+concurrency:
+  group: nikotube-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: gradle
+      - name: Configure persistent stable signing
+        shell: bash
+        env:
+          SIGNING_KEY: ${{ secrets.NIKOTUBE_SIGNING_KEY }}
+          STORE_PASSWORD: ${{ secrets.NIKOTUBE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NIKOTUBE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NIKOTUBE_KEY_PASSWORD }}
+        run: |
+          set -eu
+          test -n "$SIGNING_KEY" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD"
+          umask 077
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/nikotube-release.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$RUNNER_TEMP/nikotube-release.jks" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+      - name: Test, lint and build stable APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :smarttubetv:testStbetaDebugUnitTest :smarttubetv:testStstableDebugUnitTest :smarttubetv:lintStstableRelease :smarttubetv:assembleStstableRelease
+      - name: Verify signature and generate update feed
+        shell: pwsh
+        run: |
+          $tools = (Get-ChildItem (Join-Path $env:ANDROID_HOME 'build-tools') -Directory | Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1).FullName
+          $apk = Get-Item 'smarttubetv/build/outputs/apk/ststable/release/*_universal.apk'
+          & "$tools/apksigner" verify --verbose $apk.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed' }
+          ./scripts/make-release-manifest.ps1 -Apk $apk.FullName -Aapt "$tools/aapt" -Tag $env:GITHUB_REF_NAME -OutputDirectory release-assets
+          Copy-Item -LiteralPath $apk.FullName -Destination release-assets
+      - name: Prepare and verify release assets, then publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          printf '%s\n' "NikoTube ${GITHUB_REF_NAME}" '' 'Stable Android package: org.smarttube.stable.' '' 'Beta users install this stable package separately. Older stable installations signed with another key require a one-time reinstall. Future stable releases update in place.' '' 'See SHA256SUMS.txt for APK integrity verification.' > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "NikoTube ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release upload "$GITHUB_REF_NAME" release-assets/*
+          gh release download "$GITHUB_REF_NAME" --dir "$RUNNER_TEMP/release-verify"
+          cd "$RUNNER_TEMP/release-verify"
+          sha256sum --check SHA256SUMS.txt
+          cmp nikotube-stable.json "$GITHUB_WORKSPACE/release-assets/nikotube-stable.json"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+      - name: Remove runner signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f keystore.properties "$RUNNER_TEMP/nikotube-release.jks"

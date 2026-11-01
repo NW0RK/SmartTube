@@ -309,6 +309,11 @@
             android:screenOrientation="unspecified"/>
 
         <!-- END Launchers -->
+        <provider android:name=".ui.mobile.MobileUpdateProvider"
+            android:authorities="${applicationId}.nikotube_updates"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/nikotube_update_paths" />
+        </provider>
         <activity android:name=".ui.mobile.MobileBrowseActivity" android:launchMode="singleTask" android:exported="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|layoutDirection" android:windowSoftInputMode="adjustResize"/>
         <service android:name=".ui.mobile.MobilePlaybackService"
             android:exported="false" android:foregroundServiceType="mediaPlayback" />

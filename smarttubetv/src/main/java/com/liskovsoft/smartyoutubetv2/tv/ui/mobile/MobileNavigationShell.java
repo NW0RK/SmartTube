@@ -19,7 +19,7 @@ import com.liskovsoft.mediaserviceinterfaces.oauth.Account;
 import com.liskovsoft.smartyoutubetv2.common.misc.MediaServiceManager;
 import com.liskovsoft.smartyoutubetv2.tv.R;
 
-/** Floating navigation owns its content clearance, including font scaling and window insets. */
+/** Opaque navigation reserves measured space, including font scaling and window insets. */
 final class MobileNavigationShell extends FrameLayout {
     static final String DESTINATION = "mobile_destination";
     static final int YOU = -2;
@@ -42,15 +42,11 @@ final class MobileNavigationShell extends FrameLayout {
         setBackgroundColor(MobileUi.background(c));
         addView(content, new LayoutParams(-1, -1));
         navigation.setGravity(Gravity.CENTER_VERTICAL);
-        navigation.setPadding(MobileUi.dp(c, 8), MobileUi.dp(c, 8), MobileUi.dp(c, 8), MobileUi.dp(c, 8));
-        GradientDrawable surface = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{c.getColor(R.color.mobile_navigation_overlay_top), c.getColor(R.color.mobile_navigation_overlay_bottom)});
-        surface.setCornerRadius(MobileUi.dp(c, 44));
-        surface.setStroke(MobileUi.dp(c, 1), c.getColor(R.color.mobile_divider));
-        navigation.setBackground(surface);
-        navigation.setElevation(MobileUi.dp(c, 8));
+        navigation.setPadding(MobileUi.dp(c, 8), 0, MobileUi.dp(c, 8), 0);
+        navigation.setBackgroundColor(c.getColor(R.color.mobile_surface));
+        navigation.setMinimumHeight(MobileUi.dp(c, 64));
+        navigation.setElevation(0);
         LayoutParams params = new LayoutParams(-1, -2, Gravity.BOTTOM);
-        params.setMargins(MobileUi.dp(c, 16), MobileUi.dp(c, 12), MobileUi.dp(c, 16), MobileUi.dp(c, 12));
         addView(navigation, params);
         navigation.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> updateClearance());
         setOnApplyWindowInsetsListener((v, insets) -> {
@@ -79,6 +75,17 @@ final class MobileNavigationShell extends FrameLayout {
         });
     }
 
+    @Override protected void onMeasure(int widthSpec, int heightSpec) {
+        if (!keyboard) measureChildWithMargins(navigation, widthSpec, 0, heightSpec, 0);
+        LayoutParams params = (LayoutParams) content.getLayoutParams();
+        int clearance = keyboard ? 0 : navigation.getMeasuredHeight();
+        if (params.bottomMargin != clearance) {
+            params.bottomMargin = clearance;
+            content.setLayoutParams(params);
+        }
+        super.onMeasure(widthSpec, heightSpec);
+    }
+
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         requestApplyInsets();
@@ -93,10 +100,14 @@ final class MobileNavigationShell extends FrameLayout {
     }
 
     private void updateClearance() {
-        int clearance = keyboard ? 0 : navigation.getHeight() + MobileUi.dp(getContext(), 24);
-        boolean scrolling = padScrollingContent(content, clearance);
-        content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(),
-                contentBottom + (scrolling ? 0 : clearance));
+        int clearance = keyboard ? 0 : navigation.getHeight();
+        LayoutParams params = (LayoutParams) content.getLayoutParams();
+        if (params.bottomMargin != clearance) {
+            params.bottomMargin = clearance;
+            content.setLayoutParams(params);
+        }
+        padScrollingContent(content, 0);
+        content.setPadding(content.getPaddingLeft(), content.getPaddingTop(), content.getPaddingRight(), contentBottom);
     }
 
     private boolean padScrollingContent(View view, int clearance) {
@@ -119,7 +130,7 @@ final class MobileNavigationShell extends FrameLayout {
     static LinearLayout destinations(MobileActivity activity) {
         LinearLayout row = new LinearLayout(activity);
         addDestination(row, activity, R.drawable.icon_home, R.string.header_home, MediaGroup.TYPE_HOME);
-        addDestination(row, activity, R.drawable.icon_history, R.string.header_history, MediaGroup.TYPE_HISTORY);
+        addDestination(row, activity, R.drawable.icon_subscriptions, R.string.header_subscriptions, MediaGroup.TYPE_SUBSCRIPTIONS);
         addDestination(row, activity, R.drawable.ic_user, R.string.mobile_you, YOU);
         return row;
     }

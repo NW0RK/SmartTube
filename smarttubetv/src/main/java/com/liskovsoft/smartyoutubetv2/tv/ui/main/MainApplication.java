@@ -58,6 +58,8 @@ public class MainApplication extends MultiDexApplication implements Configuratio
     @Override
     public void onCreate() {
         super.onCreate();
+        com.liskovsoft.smartyoutubetv2.common.app.presenters.dialogs.AppUpdateRoute.setHandler(
+                (context, manual) -> MobileUpdates.check(context, manual));
 
         // ByeByeDPI fix
         // https://android-review.googlesource.com/c/platform/external/conscrypt/+/89408/

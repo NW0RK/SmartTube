@@ -449,6 +449,10 @@ public class VideoStateController extends BasePlayerController {
         if (getPlayer() == null) {
             return;
         }
+        if (getPlayer().usesPerVideoQuality()) {
+            getPlayer().restorePerVideoQuality();
+            return;
+        }
 
         if (getPlayerData().getTempVideoFormat() != null) {
             getPlayer().setFormat(getPlayerData().getTempVideoFormat());

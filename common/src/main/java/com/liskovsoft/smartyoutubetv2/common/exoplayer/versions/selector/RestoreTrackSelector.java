@@ -145,6 +145,11 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
     @Override
     protected Definition selectVideoTrack(TrackGroupArray groups, int[][] formatSupports, int mixedMimeTypeAdaptationSupports,
                                               Parameters params, boolean enableAdaptiveTrackSelection) throws ExoPlaybackException {
+        Definition preferred = selectPreferredVideoTrack(groups, formatSupports);
+        if (preferred != null) {
+            if (mCallback != null) mCallback.updateVideoTrackSelection(groups, params, preferred);
+            return preferred;
+        }
         if (mCallback != null) {
             Pair<Definition, MediaTrack> resultPair = mCallback.onSelectVideoTrack(groups, params);
 
@@ -169,6 +174,10 @@ public class RestoreTrackSelector extends DefaultTrackSelector {
         }
 
         return definition;
+    }
+
+    protected Definition selectPreferredVideoTrack(TrackGroupArray groups, int[][] support) {
+        return null;
     }
 
     // Exo 2.10 and up

@@ -49,6 +49,7 @@ public class AppUpdatePresenter extends BasePresenter<Void> implements AppUpdate
     }
 
     public void start(boolean forceCheck) {
+        if (AppUpdateRoute.dispatch(getContext(), forceCheck)) return;
         mIsForceCheck = forceCheck;
 
         if (forceCheck) {

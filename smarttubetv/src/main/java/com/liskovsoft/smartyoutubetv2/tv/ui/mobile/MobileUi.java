@@ -20,10 +20,8 @@ final class MobileUi {
     }
 
     static GradientDrawable pillSurface(Context c) {
-        GradientDrawable surface = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{c.getColor(R.color.mobile_navigation_top), c.getColor(R.color.mobile_navigation_bottom)});
-        surface.setCornerRadius(dp(c, 28));
-        surface.setStroke(dp(c, 1), c.getColor(R.color.mobile_divider));
+        GradientDrawable surface = rounded(c, c.getColor(R.color.mobile_surface));
+        surface.setCornerRadius(dp(c, 12));
         return surface;
     }
 
@@ -32,7 +30,7 @@ final class MobileUi {
         StateListDrawable states = new StateListDrawable();
         if (selectable) {
             GradientDrawable selected = pillSurface(c);
-            selected.setColor(Color.argb(55, Color.red(accent(c)), Color.green(accent(c)), Color.blue(accent(c))));
+            selected.setColor(Color.rgb(241, 241, 241));
             states.addState(new int[]{android.R.attr.state_selected}, selected);
         }
         states.addState(new int[]{}, pillSurface(c));
@@ -55,13 +53,13 @@ final class MobileUi {
         browseFeedback(b, true);
         b.setTextColor(new ColorStateList(new int[][]{
                 new int[]{-android.R.attr.state_enabled}, new int[]{android.R.attr.state_selected}, new int[]{}},
-                new int[]{c.getColor(R.color.mobile_text_secondary), accent(c), Color.WHITE}));
+                new int[]{c.getColor(R.color.mobile_text_secondary), Color.BLACK, Color.WHITE}));
         return b;
     }
 
     static void navigationState(Button button, boolean selected) {
         button.setSelected(selected);
-        int color = selected ? accent(button.getContext()) : Color.WHITE;
+        int color = selected ? Color.WHITE : button.getContext().getColor(R.color.mobile_text_secondary);
         button.setTextColor(color);
         if (button.getForeground() != null && !Boolean.TRUE.equals(button.getTag(R.id.mobile_navigation_avatar)))
             button.getForeground().setTint(color);
@@ -181,7 +179,7 @@ final class MobileUi {
         button.setGravity(Gravity.CENTER);
         button.setIncludeFontPadding(false);
         button.setCompoundDrawablePadding(dp(c, 4));
-        button.setMaxLines(1);
+        button.setMaxLines(2);
         android.graphics.drawable.Drawable drawable = c.getDrawable(icon).mutate();
         drawable.setTint(Color.WHITE);
         drawable.setBounds(0, 0, dp(c, 24), dp(c, 24));
@@ -205,13 +203,12 @@ final class MobileUi {
     static void playerFeedback(Button button) {
         Context c = button.getContext();
         StateListDrawable states = new StateListDrawable();
-        GradientDrawable selected = rounded(c, 0x55202020);
+        GradientDrawable selected = rounded(c, c.getColor(R.color.mobile_surface));
         selected.setCornerRadius(dp(c, 28));
         selected.setStroke(dp(c, 1), accent(c));
         states.addState(new int[]{android.R.attr.state_selected}, selected);
-        GradientDrawable normal = rounded(c, 0x66202020);
+        GradientDrawable normal = rounded(c, c.getColor(R.color.mobile_surface));
         normal.setCornerRadius(dp(c, 28));
-        normal.setStroke(dp(c, 1), 0x22ffffff);
         states.addState(new int[]{}, normal);
         GradientDrawable mask = rounded(c, Color.WHITE);
         mask.setCornerRadius(dp(c, 28));
@@ -223,12 +220,22 @@ final class MobileUi {
         button.setElevation(0);
     }
 
+    static void subscriptionFeedback(Button button) {
+        Context c = button.getContext();
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_selected}, rounded(c, c.getColor(R.color.mobile_surface)));
+        states.addState(new int[]{}, rounded(c, accent(c)));
+        button.setBackgroundTintList(null);
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
+                states, rounded(c, Color.WHITE)));
+        button.setElevation(0);
+    }
+
     static LinearLayout toolbar(Context c, CharSequence title, Runnable back) {
         LinearLayout row = new LinearLayout(c);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPaddingRelative(dp(c, 8), dp(c, 4), dp(c, 8), dp(c, 4));
-        row.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{c.getColor(R.color.mobile_surface), background(c)}));
+        row.setBackgroundColor(background(c));
         if (back != null) {
             row.addView(iconButton(c, R.drawable.mobile_back, c.getString(R.string.mobile_back), back),
                     new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
@@ -278,7 +285,7 @@ final class MobileUi {
         navigationIcon(button, button.getCompoundDrawables()[1]);
         button.setMinHeight(dp(c, 48));
         button.setMinimumHeight(dp(c, 48));
-        button.setCompoundDrawablePadding(0);
+        button.setCompoundDrawablePadding(dp(c, 4));
         StateListDrawable states = new StateListDrawable();
         GradientDrawable selected = rounded(c, 0x22ffffff);
         selected.setCornerRadius(dp(c, 32));
@@ -293,15 +300,11 @@ final class MobileUi {
 
     static void navigationIcon(Button button, android.graphics.drawable.Drawable drawable) {
         int size = dp(button.getContext(), 24);
-        android.graphics.drawable.LayerDrawable icon = new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{drawable});
-        icon.setLayerSize(0, size, size);
-        icon.setLayerGravity(0, Gravity.CENTER);
-        button.setText("");
-        button.setCompoundDrawables(null, null, null, null);
-        button.setPadding(0, 0, 0, 0);
-        button.setForeground(icon);
-        button.setForegroundGravity(Gravity.FILL);
+        drawable.setBounds(0, 0, size, size);
+        button.setForeground(null);
+        button.setCompoundDrawables(null, drawable, null, null);
+        button.setCompoundDrawablePadding(dp(button.getContext(), 4));
+        button.setPadding(0, dp(button.getContext(), 4), 0, dp(button.getContext(), 4));
     }
 
     static void addSeparator(LinearLayout row) {

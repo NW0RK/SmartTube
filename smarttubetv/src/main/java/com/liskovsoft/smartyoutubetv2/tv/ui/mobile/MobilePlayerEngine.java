@@ -40,6 +40,8 @@ public abstract class MobilePlayerEngine extends Fragment
     protected ExoPlayerController mExoPlayerController;
     protected ExoPlayerInitializer mPlayerInitializer;
     protected SimpleExoPlayer mPlayer;
+    protected MobileTrackSelector mobileTrackSelector;
+    private FormatItem manualVideoFormat;
     protected PlayerView surface;
     private MediaSessionCompat mMediaSession;
     private MediaSessionConnector mMediaSessionConnector;
@@ -72,8 +74,10 @@ public abstract class MobilePlayerEngine extends Fragment
 
     protected void initializePlayer() {
         if (mPlayer != null) return;
-        RestoreTrackSelector selector =
-                new RestoreTrackSelector(new AdaptiveTrackSelection.Factory());
+        MobileTrackSelector selector = new MobileTrackSelector();
+        if (mobileTrackSelector != null) selector.rejected.addAll(mobileTrackSelector.rejected);
+        selector.manual = manualVideoFormat != null;
+        mobileTrackSelector = selector;
         selector.requireSupportedFormats();
         mExoPlayerController.setTrackSelector(selector);
         CustomOverridesRenderersFactory renderers =
@@ -99,6 +103,8 @@ public abstract class MobilePlayerEngine extends Fragment
 
             @Override
             public void onPlayerError(ExoPlaybackException error) {
+                if (error.type == ExoPlaybackException.TYPE_RENDERER && error.rendererIndex == 0)
+                    mobileTrackSelector.reject(mPlayer.getVideoFormat());
                 updatePlaybackService(false);
             }
         };
@@ -114,6 +120,28 @@ public abstract class MobilePlayerEngine extends Fragment
     }
 
     protected void onPlayerCreated() {}
+
+    @Override public boolean usesPerVideoQuality() { return true; }
+
+    @Override public void selectUserFormat(FormatItem format) {
+        if (format != null && format.getType() == FormatItem.TYPE_VIDEO) {
+            manualVideoFormat = format;
+            if (mobileTrackSelector != null) mobileTrackSelector.manual = true;
+        }
+        setFormat(format);
+    }
+
+    @Override public void restorePerVideoQuality() {
+        if (manualVideoFormat != null) setFormat(manualVideoFormat);
+    }
+
+    protected void resetMobileQuality() {
+        manualVideoFormat = null;
+        if (mobileTrackSelector != null) {
+            mobileTrackSelector.manual = false;
+            mobileTrackSelector.rejected.clear();
+        }
+    }
 
     private void prepareCaptions() {
         FormatItem preferred = captions.prepare(mExoPlayerController.getSubtitleFormats(),

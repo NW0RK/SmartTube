@@ -1,5 +1,46 @@
 # Phone frontend
 
+## Redesign and stable-update implementation — November 2, 2026
+
+The mobile interface uses opaque dark surfaces, a full-width labeled bottom bar,
+reserved navigation height, flat watch details and recommendations, red
+subscription actions, and eased, interruptible control fades. Per-video quality
+selection prefers the supported 1080p video track with the lowest known positive
+bitrate; manual choices remain scoped to the current video. The stable package
+now has Settings → App updates, daily metadata checks, user-initiated downloads,
+checksum/package/version/signature validation, and Android installer handoff.
+Beta and F-Droid packages receive no stable update offers.
+
+Home and screen-lock audio continue, explicit pauses survive returning to the
+existing task, and swipe-away requests pause and service cleanup. The service
+still protects a player owned by the watch fragment. Moving ownership into the
+service, preserving playback after watch destruction/Back/browsing, cached UI
+reattachment, and background rendering suspension remain unfinished. Those
+behaviors must not be advertised as implemented.
+
+Before the user's instruction to stop testing, all 75 mobile tests passed under
+Java 11 and stable debug assembly succeeded against isolated upstream dependency
+copies. The Galaxy A52 checks confirmed screen-off audio, pause persistence,
+bitrate-based 1080p selection, manual 720p selection, next-video quality reset,
+and the opaque layouts at its existing 150% text size. The final flat watch
+layout was rebuilt and inspected. No further tests or device interactions were
+run after the instruction to stop. These results do not establish compatibility
+of a reconstructed dependency or the complete accepted release plan.
+
+The intended next version is 32.69 / 2459, stable package
+`org.smarttube.stable`. A persistent signing identity is stored outside this
+repository. Its SHA-256 certificate fingerprint is
+`edd54206ec6877d12ec8b23ef5c075d9fea973e54beeaf158674c49945096c6b`.
+Beta users install stable separately; stable installations signed with a different
+key need a one-time reinstall. Future builds must retain this signing identity.
+
+The exact custom MediaServiceCore commit
+`19132e0328e98d4933cda6e9d96199daaf4bc2e8` remains unavailable. The original
+submodule working trees and their staged deletions are preserved. See
+[dependency reconstruction](../patches/README.md) for the source repair retained
+for review. It is not recovery of the exact pinned commit. Stable publication
+remains withheld under the accepted plan's explicit dependency gate.
+
 ## Watch page scroll position — October 14, 2026
 
 The phone watch page starts at the top of its video details and no longer follows shared TV recommendation-focus callbacks when suggestions finish loading. Late recommendation updates preserve manual scrolling. Opening a different video resets the details header to an explicit zero offset, including when large text makes it taller than the viewport. Horizontal chapter focusing is retained.

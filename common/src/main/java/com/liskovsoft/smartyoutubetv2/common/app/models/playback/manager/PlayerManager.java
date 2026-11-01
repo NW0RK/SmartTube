@@ -13,4 +13,7 @@ public interface PlayerManager extends PlayerEngine, PlayerUI {
     void showBackgroundColor(int colorResId);
     void resetPlayerState();
     boolean isEmbed();
+    default boolean usesPerVideoQuality() { return false; }
+    default void restorePerVideoQuality() { }
+    default void selectUserFormat(com.liskovsoft.smartyoutubetv2.common.exoplayer.selector.FormatItem format) { setFormat(format); }
 }

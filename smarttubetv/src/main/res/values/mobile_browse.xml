@@ -1,15 +1,15 @@
 <resources>
     <item name="mobile_navigation_avatar" type="id"/>
-    <color name="mobile_background">#000000</color>
-    <color name="mobile_surface">#232323</color>
-    <color name="mobile_accent">#FF3D3D</color>
-    <color name="mobile_navigation_top">#EE383838</color>
-    <color name="mobile_navigation_bottom">#F0222222</color>
-    <color name="mobile_text_secondary">#B8B8B8</color>
+    <color name="mobile_background">#0F0F0F</color>
+    <color name="mobile_surface">#212121</color>
+    <color name="mobile_accent">#FF0033</color>
+    <color name="mobile_navigation_top">#303030</color>
+    <color name="mobile_navigation_bottom">#303030</color>
+    <color name="mobile_text_secondary">#AAAAAA</color>
     <color name="mobile_feedback">#33FFFFFF</color>
     <dimen name="mobile_space">12dp</dimen>
     <dimen name="mobile_page_padding">16dp</dimen>
-    <dimen name="mobile_corner">16dp</dimen>
+    <dimen name="mobile_corner">12dp</dimen>
     <dimen name="mobile_title_size">18sp</dimen>
     <dimen name="mobile_meta_size">13sp</dimen>
     <string name="mobile_clear_search">Clear search</string>

@@ -1,9 +1,11 @@
 <resources>
+    <item name="mobile_controls_requested" type="id"/>
+    <item name="mobile_enter_animating" type="id"/>
     <item name="mobile_toolbar_title" type="id"/>
     <string name="mobile_brand_name" translatable="false">NikoTube</string>
     <color name="mobile_divider">#26FFFFFF</color>
-    <color name="mobile_navigation_overlay_top">#88383838</color>
-    <color name="mobile_navigation_overlay_bottom">#88222222</color>
+    <color name="mobile_navigation_overlay_top">#212121</color>
+    <color name="mobile_navigation_overlay_bottom">#212121</color>
     <color name="mobile_player_panel">#181818</color>
     <color name="mobile_comment_heart">#FF637C</color>
     <item name="mobile_watch_container" type="id"/>

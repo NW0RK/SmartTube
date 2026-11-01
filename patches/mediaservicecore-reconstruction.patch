@@ -1,0 +1,365 @@
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/helpers/PublicationDateFormatter.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/helpers/PublicationDateFormatter.java
+new file mode 100644
+index 00000000..271a3678
+--- /dev/null
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/helpers/PublicationDateFormatter.java
+@@ -0,0 +1,201 @@
++package com.liskovsoft.youtubeapi.common.helpers;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.text.format.DateUtils;
++import com.liskovsoft.sharedutils.prefs.GlobalPreferences;
++import com.liskovsoft.youtubeapi.R;
++import java.text.DateFormat;
++import java.text.ParsePosition;
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.List;
++import java.util.Locale;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
++
++public final class PublicationDateFormatter {
++    private static final long DAY = 86400000;
++    private static final long HOUR = 3600000;
++    private static final long MINUTE = 60000;
++    private static final long MONTH = 2592000000L;
++    private static final long YEAR = 31536000000L;
++    private static final Pattern NUMBER = Pattern.compile("[\\p{N}.,]+");
++    private static final ConcurrentHashMap<Locale, List<Pattern>> RELATIVE_PATTERNS = new ConcurrentHashMap<>();
++    private static final Pattern PREFIX = Pattern.compile("^(?:published|premiered|released|streamed(?: live)?)(?: on)?\\s+", 2);
++    private static final Pattern ENGLISH_RELATIVE = Pattern.compile("^(?:(?:streamed(?: live)?|started streaming|premiered|published)\\s+)?(?:less than |<\\s*)?[\\p{N}.,]+\\s*(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|secs?|mins?|hrs?|mos?|yrs?|[smhdwy])\\s+ago$", 2);
++    private static final String[] DATE_PATTERNS = {"yyyy-MM-dd'T'HH:mm:ss.SSSZ", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSS", "yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd", "MMM d, yyyy", "MMMM d, yyyy", "d MMM yyyy", "d MMMM yyyy", "MMM d yyyy", "MMMM d yyyy", "d MMM, yyyy", "d MMMM, yyyy"};
++
++    private PublicationDateFormatter() {
++    }
++
++    public static String format(String text) {
++        return format(text, null);
++    }
++
++    public static String format(String relativeText, String calendarText) {
++        Context context = GlobalPreferences.context();
++        return format(relativeText, calendarText, Locale.getDefault(), System.currentTimeMillis(), context != null ? context.getResources() : null);
++    }
++
++    static String format(String relativeText, String calendarText, Locale locale, long now, Resources resources) {
++        String result = normalize(relativeText, locale, now, resources);
++        return result != null ? result : normalize(calendarText, locale, now, resources);
++    }
++
++    private static String normalize(String text, Locale locale, long now, Resources resources) {
++        if (text == null || text.trim().isEmpty()) {
++            return null;
++        }
++        String clean = text.replace('\u00a0', ' ').replace((char) 8239, ' ').trim();
++        if (ENGLISH_RELATIVE.matcher(clean).matches() || clean.equalsIgnoreCase("just now") || clean.equalsIgnoreCase("today") || clean.equalsIgnoreCase("yesterday")) {
++            return text.trim();
++        }
++        String dateText = PREFIX.matcher(clean).replaceFirst("");
++        Date date = parseDate(dateText, locale);
++        if (date != null) {
++            if (date.getTime() > now) {
++                return null;
++            }
++            return formatAge(now - date.getTime(), resources);
++        }
++        if (!isLocalizedRelative(clean, now)) {
++            return null;
++        }
++        return text.trim();
++    }
++
++    private static Date parseDate(String text, Locale locale) {
++        String iso = text.replaceFirst("Z$", "+0000").replaceFirst("([+-]\\d{2}):(\\d{2})$", "$1$2");
++        Locale[] localeArr = {locale, Locale.US};
++        for (int i = 0; i < 2; i++) {
++            Locale candidate = localeArr[i];
++            for (String pattern : DATE_PATTERNS) {
++                Date date = parseFully(new SimpleDateFormat(pattern, candidate), iso);
++                if (date != null) {
++                    return date;
++                }
++            }
++            int[] iArr = {0, 1, 2, 3};
++            for (int i2 = 0; i2 < 4; i2++) {
++                int style = iArr[i2];
++                Date date2 = parseFully(DateFormat.getDateInstance(style, candidate), text);
++                if (date2 != null) {
++                    return date2;
++                }
++            }
++        }
++        return null;
++    }
++
++    private static Date parseFully(DateFormat format, String text) {
++        format.setLenient(false);
++        ParsePosition position = new ParsePosition(0);
++        Date result = format.parse(text, position);
++        if (result == null || position.getIndex() != text.length()) {
++            return null;
++        }
++        return result;
++    }
++
++    private static boolean isLocalizedRelative(String text, long now) {
++        Locale locale = Locale.getDefault();
++        List<Pattern> patterns = RELATIVE_PATTERNS.get(locale);
++        if (patterns == null) {
++            patterns = new ArrayList<>();
++            long[] jArr = {60000, HOUR, 86400000};
++            int i = 0;
++            for (int i2 = 3; i < i2; i2 = 3) {
++                long unit = jArr[i];
++                int[] iArr = {1, 2, 5, 21};
++                int i3 = 0;
++                for (int i4 = 4; i3 < i4; i4 = 4) {
++                    int count = iArr[i3];
++                    if (((long) count) * unit < 604800000) {
++                        String sample = relativeSample(unit, count, now);
++                        Matcher number = NUMBER.matcher(sample);
++                        String regex = number.find() ? Pattern.quote(sample.substring(0, number.start())) + "[\\p{N}.,]+" + Pattern.quote(sample.substring(number.end())) : Pattern.quote(sample);
++                        patterns.add(Pattern.compile(regex));
++                    }
++                    i3++;
++                }
++                i++;
++            }
++            addRelativeMarkerPattern(patterns, relativeSample(HOUR, 5, now), relativeSample(86400000L, 5, now));
++            RELATIVE_PATTERNS.put(locale, patterns);
++        }
++        for (Pattern pattern : patterns) {
++            if (pattern.matcher(text).matches()) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private static String relativeSample(long unit, int count, long now) {
++        return DateUtils.getRelativeTimeSpanString(now - (((long) count) * unit), now, unit, 16).toString().replace('\u00a0', ' ').replace((char) 8239, ' ');
++    }
++
++    private static void addRelativeMarkerPattern(List<Pattern> patterns, String hours, String days) {
++        Pattern pattern = NUMBER;
++        Matcher hourNumber = pattern.matcher(hours);
++        Matcher dayNumber = pattern.matcher(days);
++        if (!hourNumber.find() || !dayNumber.find()) {
++            return;
++        }
++        String prefix = hours.substring(0, hourNumber.start());
++        if (prefix.equals(days.substring(0, dayNumber.start()))) {
++            String hourSuffix = hours.substring(hourNumber.end());
++            String daySuffix = days.substring(dayNumber.end());
++            int length = 0;
++            while (length < Math.min(hourSuffix.length(), daySuffix.length()) && hourSuffix.charAt((hourSuffix.length() - length) - 1) == daySuffix.charAt((daySuffix.length() - length) - 1)) {
++                length++;
++            }
++            String suffix = hourSuffix.substring(hourSuffix.length() - length);
++            if (!suffix.isEmpty() && !Character.isWhitespace(suffix.charAt(0)) && suffix.contains(" ")) {
++                suffix = suffix.substring(suffix.indexOf(32));
++            }
++            if ((prefix.trim().isEmpty() && suffix.trim().isEmpty()) || suffix.trim().equalsIgnoreCase("ago")) {
++                return;
++            }
++            patterns.add(Pattern.compile(Pattern.quote(prefix) + "[\\p{N}.,]+[\\p{L}\\p{M}\\s]+" + Pattern.quote(suffix)));
++        }
++    }
++
++    private static String formatAge(long age, Resources resources) {
++        long unit;
++        int resource;
++        String name;
++        if (age < 60000) {
++            return resources != null ? resources.getString(R.string.publication_just_now) : "just now";
++        }
++        if (age < HOUR) {
++            unit = 60000;
++            resource = R.plurals.publication_minutes_ago;
++            name = "minute";
++        } else if (age < 86400000) {
++            unit = HOUR;
++            resource = R.plurals.publication_hours_ago;
++            name = "hour";
++        } else if (age < MONTH) {
++            unit = 86400000;
++            resource = R.plurals.publication_days_ago;
++            name = "day";
++        } else if (age < YEAR) {
++            unit = MONTH;
++            resource = R.plurals.publication_months_ago;
++            name = "month";
++        } else {
++            unit = YEAR;
++            resource = R.plurals.publication_years_ago;
++            name = "year";
++        }
++        int count = (int) Math.min(Integer.MAX_VALUE, age / unit);
++        if (resources != null) {
++            return resources.getQuantityString(resource, count, Integer.valueOf(count));
++        }
++        return count + " " + name + (count == 1 ? "" : "s") + " ago";
++    }
++}
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/models/impl/mediaitem/MediaItemImpl.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/models/impl/mediaitem/MediaItemImpl.kt
+index dc178cf5..b6df2823 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/models/impl/mediaitem/MediaItemImpl.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/common/models/impl/mediaitem/MediaItemImpl.kt
+@@ -1,5 +1,6 @@
+ package com.liskovsoft.youtubeapi.common.models.impl.mediaitem
+ 
++import com.liskovsoft.youtubeapi.common.helpers.PublicationDateFormatter
+ import com.liskovsoft.sharedutils.helpers.Helpers
+ import com.liskovsoft.youtubeapi.browse.v2.gen.*
+ import com.liskovsoft.youtubeapi.common.models.gen.*
+@@ -23,7 +24,7 @@ internal class WrapperMediaItem(private val itemWrapper: ItemWrapper): BaseMedia
+     }
+     override val subTitle by lazy { itemWrapper.getSubTitle() } // quality tag (e.g. 4K, LIVE) or full second title
+     override val userName by lazy { itemWrapper.getUserName() }
+-    override val publishedTime by lazy { itemWrapper.getPublishedTime() }
++    override val publishedTime by lazy { PublicationDateFormatter.format(itemWrapper.getPublishedTime()) }
+     override val viewCountText by lazy { itemWrapper.getViewCountText() }
+     override val upcomingEventText by lazy { itemWrapper.getUpcomingEventText() }
+     override val cardThumbImageUrl by lazy { itemWrapper.getThumbnails()?.getOptimalResThumbnailUrl() }
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/innertube/impl/MediaItemFormatInfoImpl.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/innertube/impl/MediaItemFormatInfoImpl.kt
+index 50e318a3..37a9b145 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/innertube/impl/MediaItemFormatInfoImpl.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/innertube/impl/MediaItemFormatInfoImpl.kt
+@@ -431,9 +431,6 @@ internal data class MediaItemFormatInfoImpl(private val playerResult: PlayerResu
+         }
+ 
+         // TODO: live SABR formats still broken
+-        //return !containsDashFormats() && _isLive
+-
+-        // TODO: live SABR formats are experimental
+-        return false
++        return !containsDashFormats() && _isLive
+     }
+ }
+\ No newline at end of file
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/next/v2/impl/MediaItemMetadataImpl.kt b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/next/v2/impl/MediaItemMetadataImpl.kt
+index f0f27164..b5d9f035 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/next/v2/impl/MediaItemMetadataImpl.kt
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/next/v2/impl/MediaItemMetadataImpl.kt
+@@ -9,6 +9,7 @@ import com.liskovsoft.youtubeapi.common.models.gen.*
+ import com.liskovsoft.youtubeapi.next.v2.gen.WatchNextResult
+ import com.liskovsoft.youtubeapi.common.models.impl.mediagroup.SuggestionsGroup
+ import com.liskovsoft.youtubeapi.common.models.impl.mediaitem.NextMediaItem
++import com.liskovsoft.youtubeapi.common.helpers.PublicationDateFormatter
+ import com.liskovsoft.googlecommon.common.helpers.YouTubeHelper
+ import com.liskovsoft.youtubeapi.common.models.impl.mediaitem.ShuffleMediaItem
+ import com.liskovsoft.youtubeapi.next.v2.gen.*
+@@ -103,7 +104,7 @@ internal data class MediaItemMetadataImpl(private val watchNextResult: WatchNext
+     }
+     private val videoSecondTitle by lazy {
+         YouTubeHelper.createInfo(
+-            videoAuthor, albumName, viewCountText, publishedTime
++            videoAuthor, albumName, viewCountText, publishedDateText
+         )
+     }
+     private val videoAuthor by lazy { videoDetails?.getUserName() }
+@@ -144,7 +145,7 @@ internal data class MediaItemMetadataImpl(private val watchNextResult: WatchNext
+     }
+ 
+     private val publishedDateText by lazy { // relative date (e.g. 1 hour ago)
+-        videoMetadata?.getDateText() ?: videoDetails?.getPublishedTimeText()
++        PublicationDateFormatter.format(videoMetadata?.getDateText() ?: videoDetails?.getPublishedTimeText(), publishedTime)
+     }
+ 
+     private val videoIdItem by lazy {
+@@ -226,7 +227,7 @@ internal data class MediaItemMetadataImpl(private val watchNextResult: WatchNext
+     }
+ 
+     override fun getPublishedDate(): String? {
+-        return publishedTime
++        return publishedDateText
+     }
+ 
+     override fun getVideoId(): String? {
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/data/YouTubeMediaItemMetadata.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/data/YouTubeMediaItemMetadata.java
+index 5cf68ffe..169e938b 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/data/YouTubeMediaItemMetadata.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/service/data/YouTubeMediaItemMetadata.java
+@@ -15,6 +15,7 @@ import com.liskovsoft.youtubeapi.next.v1.models.SuggestedSection;
+ import com.liskovsoft.youtubeapi.next.v1.models.VideoMetadata;
+ import com.liskovsoft.youtubeapi.next.v1.models.VideoOwner;
+ import com.liskovsoft.youtubeapi.next.v1.result.WatchNextResult;
++import com.liskovsoft.youtubeapi.common.helpers.PublicationDateFormatter;
+ import com.liskovsoft.googlecommon.common.helpers.YouTubeHelper;
+ 
+ import java.util.ArrayList;
+@@ -64,15 +65,15 @@ public class YouTubeMediaItemMetadata implements MediaItemMetadata {
+             mediaItemMetadata.mChannelId = videoDetails.getChannelId();
+             mediaItemMetadata.mTitle = videoDetails.getTitle();
+             mediaItemMetadata.mVideoId = videoDetails.getVideoId();
+-            mediaItemMetadata.mPublishedDate = videoDetails.getPublishedDate();
++            mediaItemMetadata.mPublishedDate = PublicationDateFormatter.format(videoDetails.getPublishedDate());
+ 
+             mediaItemMetadata.mSecondTitle = YouTubeHelper.createInfo(
+                     mediaItemMetadata.mAuthor,
+-                    videoDetails.getPublishedDate(),
++                    mediaItemMetadata.mPublishedDate,
+                     videoDetails.getViewCountText());
+             mediaItemMetadata.mSecondTitleAlt = YouTubeHelper.createInfo(
+                     mediaItemMetadata.mAuthor,
+-                    videoDetails.getPublishedDate(),
++                    mediaItemMetadata.mPublishedDate,
+                     videoDetails.getShortViewCountText());
+         }
+ 
+@@ -86,14 +87,15 @@ public class YouTubeMediaItemMetadata implements MediaItemMetadata {
+ 
+         if (videoMetadata != null) {
+             String author = mediaItemMetadata.mAuthor != null ? mediaItemMetadata.mAuthor : videoMetadata.getByLine();
+-            String publishedTime = videoMetadata.getPublishedTime() != null ? videoMetadata.getPublishedTime() : videoMetadata.getAlbumName();
++            String publishedTime = PublicationDateFormatter.format(videoMetadata.getPublishedDate(), videoMetadata.getPublishedTime());
++            mediaItemMetadata.mPublishedDate = publishedTime != null ? publishedTime : mediaItemMetadata.mPublishedDate;
+             mediaItemMetadata.mTitle = videoMetadata.getTitle();
+             mediaItemMetadata.mSecondTitle = YouTubeHelper.createInfo(
+-                    author, publishedTime,
++                    author, mediaItemMetadata.mPublishedDate,
+                     videoMetadata.getShortViewCount());
+             mediaItemMetadata.mSecondTitleAlt = YouTubeHelper.createInfo(
+                     author,
+-                    videoMetadata.getPublishedDate(),
++                    mediaItemMetadata.mPublishedDate,
+                     videoMetadata.getShortViewCount());
+             mediaItemMetadata.mVideoId = videoMetadata.getVideoId();
+             mediaItemMetadata.mDescription = videoMetadata.getDescription();
+@@ -101,7 +103,7 @@ public class YouTubeMediaItemMetadata implements MediaItemMetadata {
+             mediaItemMetadata.mLikesCount = videoMetadata.getLikesCount();
+             mediaItemMetadata.mViewCount = Helpers.toString(videoMetadata.getViewCount());
+             mediaItemMetadata.mPercentWatched = videoMetadata.getPercentWatched();
+-            mediaItemMetadata.mPublishedDate = videoMetadata.getPublishedDate();
++
+             mediaItemMetadata.mIsLive = videoMetadata.isLive();
+             mediaItemMetadata.mIsUpcoming = videoMetadata.isUpcoming();
+ 
+diff --git a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/models/VideoInfo.java b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/models/VideoInfo.java
+index 0c5ac178..6503ef31 100644
+--- a/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/models/VideoInfo.java
++++ b/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/videoinfo/models/VideoInfo.java
+@@ -466,10 +466,7 @@ public class VideoInfo {
+         }
+ 
+         // TODO: live SABR formats still broken
+-        //return mAdaptiveFormats.get(0).isBroken() && isLive();
+-
+-        // TODO: live SABR formats are experimental
+-        return false;
++        return mAdaptiveFormats.get(0).isBroken() && isLive();
+     }
+ 
+     public String getPoToken() {
+diff --git a/youtubeapi/src/main/res/values/publication_dates.xml b/youtubeapi/src/main/res/values/publication_dates.xml
+new file mode 100644
+index 00000000..36b0b3f7
+--- /dev/null
++++ b/youtubeapi/src/main/res/values/publication_dates.xml
+@@ -0,0 +1 @@
++<resources><string name="publication_just_now">just now</string><plurals name="publication_minutes_ago"><item quantity="one">%d minute ago</item><item quantity="other">%d minutes ago</item></plurals><plurals name="publication_hours_ago"><item quantity="one">%d hour ago</item><item quantity="other">%d hours ago</item></plurals><plurals name="publication_days_ago"><item quantity="one">%d day ago</item><item quantity="other">%d days ago</item></plurals><plurals name="publication_months_ago"><item quantity="one">%d month ago</item><item quantity="other">%d months ago</item></plurals><plurals name="publication_years_ago"><item quantity="one">%d year ago</item><item quantity="other">%d years ago</item></plurals></resources>
+\ No newline at end of file

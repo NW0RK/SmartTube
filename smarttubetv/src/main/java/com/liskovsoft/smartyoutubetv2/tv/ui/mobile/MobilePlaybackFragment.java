@@ -346,7 +346,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         title = MobileUi.text(requireContext(), "", 18);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout information = MobileUi.column(requireContext());
-        information.setBackground(MobileUi.pillSurface(requireContext()));
+        information.setBackgroundColor(Color.TRANSPARENT);
         information.setOnClickListener(v -> action(R.id.action_info));
         title.setOnClickListener(v -> action(R.id.action_info));
         information.addView(title);
@@ -356,14 +356,12 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         meta.setOnClickListener(v -> action(R.id.action_info));
         information.addView(meta);
         LinearLayout.LayoutParams informationParams = new LinearLayout.LayoutParams(-1, -2);
-        informationParams.setMargins(MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12),
-                MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 12));
+        informationParams.setMargins(0, MobileUi.dp(requireContext(), 8), 0, MobileUi.dp(requireContext(), 8));
         details.addView(information, informationParams);
         LinearLayout channel = new LinearLayout(requireContext());
         channel.setGravity(Gravity.CENTER_VERTICAL);
-        channel.setPadding(MobileUi.dp(requireContext(), 12), MobileUi.dp(requireContext(), 8),
-                MobileUi.dp(requireContext(), 8), MobileUi.dp(requireContext(), 8));
-        channel.setBackground(MobileUi.pillSurface(requireContext()));
+        channel.setPadding(0, MobileUi.dp(requireContext(), 8), 0, MobileUi.dp(requireContext(), 8));
+        channel.setBackgroundColor(Color.TRANSPARENT);
         avatar = new ImageView(requireContext());
         channel.addView(
                 avatar,
@@ -379,7 +377,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 new LinearLayout.LayoutParams(0, MobileUi.dp(requireContext(), 48), 1));
         avatar.setOnClickListener(v -> action(R.id.action_channel));
         Button subscribe = actionButton(channel, R.id.action_subscribe, "Subscribe");
-        MobileUi.browseFeedback(subscribe, true);
+        MobileUi.subscriptionFeedback(subscribe);
         subscribe.setTextColor(Color.WHITE);
         LinearLayout.LayoutParams channelParams = new LinearLayout.LayoutParams(-1, -2);
         channelParams.setMargins(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 8));
@@ -767,6 +765,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         Video previous = getVideo();
         boolean changed = v == null || previous == null || !Objects.equals(previous.videoId, v.videoId);
         if (changed) {
+            resetMobileQuality();
             suggestionsRequested = false;
             videoLikeCount = null;
             resetSuggestedPosition();
@@ -1045,14 +1044,16 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     public void showControls(boolean show) {
         if (!show && dragging) return;
         if (controls != null) {
-            controls.setVisibility(show ? View.VISIBLE : View.GONE);
+            MobileMotion.controls(controls, show);
             mPlaybackPresenter.onControlsShown(show);
         }
     }
 
     @Override
     public boolean isControlsShown() {
-        return controls != null && controls.getVisibility() == View.VISIBLE;
+        if (controls == null) return false;
+        Object requested = controls.getTag(R.id.mobile_controls_requested);
+        return requested instanceof Boolean ? (Boolean) requested : controls.getVisibility() == View.VISIBLE;
     }
 
     @Override
@@ -1087,7 +1088,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             } else if (a != null && a.getLabel1() != null && id != R.id.action_channel)
                 b.setText(a.getLabel1());
             b.setSelected(state == BUTTON_ON);
-            int color = state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE;
+            int color = state == BUTTON_ON && id != R.id.action_subscribe ? MobileUi.accent(requireContext()) : Color.WHITE;
             b.setTextColor(color);
             for (android.graphics.drawable.Drawable icon : b.getCompoundDrawables())
                 if (icon != null) icon.setTint(color);

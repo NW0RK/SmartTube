@@ -21,6 +21,7 @@ public class MobilePlaybackService extends Service {
     private static final String SESSION = "session";
     private static final int NOTIFICATION_ID = 1002;
     private PowerManager.WakeLock wakeLock;
+    private android.support.v4.media.session.MediaControllerCompat mediaController;
 
     @Override
     public void onCreate() {
@@ -48,6 +49,10 @@ public class MobilePlaybackService extends Service {
                 .setOngoing(true)
                 .setSilent(true);
         MediaSessionCompat.Token token = intent == null ? null : intent.getParcelableExtra(SESSION);
+        if (token != null) {
+            try { mediaController = new android.support.v4.media.session.MediaControllerCompat(this, token); }
+            catch (Exception e) { Log.w("MobilePlaybackService", "Cannot connect playback controls", e); }
+        }
         if (token != null) notification.setStyle(
                 new androidx.media.app.NotificationCompat.MediaStyle().setMediaSession(token));
         startForeground(NOTIFICATION_ID, notification.build());
@@ -58,6 +63,7 @@ public class MobilePlaybackService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        if (mediaController != null) mediaController.getTransportControls().pause();
         stopSelf();
     }
 

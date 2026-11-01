@@ -44,16 +44,19 @@ public class MobileRedesignTest {
         shell.dispatchApplyWindowInsets(insets);
         layout(shell);
         assertEquals(20, shell.getPaddingBottom());
-        assertEquals(tabs.getHeight() + 24 + 7, content.getPaddingBottom());
+        assertEquals(7, content.getPaddingBottom());
+        assertEquals(tabs.getHeight(), ((FrameLayout.LayoutParams) content.getLayoutParams()).bottomMargin);
         shell.dispatchApplyWindowInsets(insets);
         layout(shell);
-        assertEquals(tabs.getHeight() + 24 + 7, content.getPaddingBottom());
+        assertEquals(7, content.getPaddingBottom());
+        assertEquals(tabs.getHeight(), ((FrameLayout.LayoutParams) content.getLayoutParams()).bottomMargin);
         shell.setKeyboardVisible(true);
         assertEquals(View.GONE, tabs.getVisibility());
         assertEquals(7, content.getPaddingBottom());
         shell.setKeyboardVisible(false);
         assertEquals(View.VISIBLE, tabs.getVisibility());
-        assertEquals(tabs.getHeight() + 24 + 7, content.getPaddingBottom());
+        assertEquals(7, content.getPaddingBottom());
+        assertEquals(tabs.getHeight(), ((FrameLayout.LayoutParams) content.getLayoutParams()).bottomMargin);
     }
 
     @Test public void largeTextNavigationRetainsAccessibleLabelsAndClickTargets() {
@@ -71,15 +74,15 @@ public class MobileRedesignTest {
             Button tab = (Button) tabs.getChildAt(i);
             assertTrue(tab.getWidth() >= 48);
             assertTrue(tab.getHeight() >= 48);
-            assertTrue(tab.getText().toString().isEmpty());
+            assertFalse(tab.getText().toString().isEmpty());
             assertNotNull(tab.getContentDescription());
             tab.performClick();
         }
         assertEquals(3, clicks[0]);
-        assertTrue(content.getPaddingBottom() >= tabs.getHeight());
+        assertEquals(tabs.getHeight(), ((FrameLayout.LayoutParams) content.getLayoutParams()).bottomMargin);
     }
 
-    @Test public void scrollingContentExtendsBehindNavigationAndLastItemsRemainReachable() {
+    @Test public void scrollingContentReservesNavigationAndLastItemsRemainReachable() {
         Context c = context();
         LinearLayout content = MobileUi.column(c), tabs = new LinearLayout(c);
         ScrollView scroll = new ScrollView(c);
@@ -93,14 +96,15 @@ public class MobileRedesignTest {
         layout(shell);
         assertEquals(0, content.getPaddingBottom());
         assertFalse(scroll.getClipToPadding());
-        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
-        assertEquals(640, scroll.getHeight());
+        assertEquals(7, scroll.getPaddingBottom());
+        layout(shell);
+        assertEquals(640 - tabs.getHeight(), scroll.getHeight());
         shell.setKeyboardVisible(true);
         assertEquals(7, scroll.getPaddingBottom());
         shell.setKeyboardVisible(false);
-        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
+        assertEquals(7, scroll.getPaddingBottom());
         layout(shell);
-        assertEquals(tabs.getHeight() + 24 + 7, scroll.getPaddingBottom());
+        assertEquals(7, scroll.getPaddingBottom());
     }
 
     @Test public void channelHeaderDoesNotPresentVideoTitleOrDescriptionAsChannelIdentity() {

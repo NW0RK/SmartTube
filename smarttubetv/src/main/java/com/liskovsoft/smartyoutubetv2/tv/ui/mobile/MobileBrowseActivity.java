@@ -78,9 +78,9 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         tab(tabs, getString(R.string.header_home), MediaGroup.TYPE_HOME, R.drawable.icon_home);
         tab(
                 tabs,
-                getString(R.string.header_history),
-                MediaGroup.TYPE_HISTORY,
-                R.drawable.icon_history);
+                getString(R.string.header_subscriptions),
+                MediaGroup.TYPE_SUBSCRIPTIONS,
+                R.drawable.icon_subscriptions);
         youTab = MobileUi.browseNavigation(this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou);
         MobileUi.addNavigation(tabs, youTab);
         setContentView(new MobileNavigationShell(this, root, tabs));
@@ -262,6 +262,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.removeAllViews();
         content.addView(feed, new LinearLayout.LayoutParams(-1, -1));
         if (changed) feed.clear();
+        if (changed) MobileMotion.enter(feed);
         rebuildChips();
         presenter.onSectionFocused(selected);
         Parcelable position = scroll.get(selected);
@@ -291,6 +292,9 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         view.addView(settings);
         content.addView(view);
         settings.addView(MobileUi.text(this, getString(R.string.header_settings), 24));
+        MobileMotion.enter(view);
+        settings.addView(MobileUi.menuRow(this, MobileUpdates.available(this) ? "App updates · Update available" : "App updates", R.drawable.action_info,
+                () -> MobileUpdates.show(this)));
         for (SettingsItem i : g.getItems()) {
             if (settings.getChildCount() > 1) MobileUi.menuDivider(settings);
             settings.addView(MobileUi.menuRow(this, i.title.replace("SmartTube", "NikoTube"), i.imageResId, i.onClick));
@@ -357,6 +361,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     @Override
     protected void onResume() {
         super.onResume();
+        MobileUpdates.check(this, false);
         if (presenter != null) presenter.onViewResumed();
         if (youTab != null) MobileNavigationShell.accountAvatar(youTab);
         refreshYou();
