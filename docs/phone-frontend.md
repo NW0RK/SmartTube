@@ -27,8 +27,9 @@ layout was rebuilt and inspected. No further tests or device interactions were
 run after the instruction to stop. These results do not establish compatibility
 of a reconstructed dependency or the complete accepted release plan.
 
-The intended next version is 32.69 / 2459, stable package
-`org.smarttube.stable`. A persistent signing identity is stored outside this
+The signed release candidate is 32.69 / 2459, stable package
+`org.smarttube.stable`; its APK and update assets are in `build/release-assets/`.
+The release variant assembled successfully. A persistent signing identity is stored outside this
 repository. Its SHA-256 certificate fingerprint is
 `edd54206ec6877d12ec8b23ef5c075d9fea973e54beeaf158674c49945096c6b`.
 Beta users install stable separately; stable installations signed with a different
