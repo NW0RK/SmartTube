@@ -105,8 +105,8 @@ public class MobilePlaybackActivity extends MobileActivity {
         boolean handled = super.dispatchTouchEvent(event);
         if (exitOnRelease && !isFinishing()) {
             View content = findViewById(android.R.id.content);
-            if (content != null) MobileMotion.exitFullscreen(content, this::exitFullscreen);
-            else exitFullscreen();
+            if (content != null) MobileMotion.exitFullscreen(content);
+            exitFullscreen();
         }
         return handled || exitOnRelease;
     }

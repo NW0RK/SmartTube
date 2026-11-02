@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Aapt,
     [Parameter(Mandatory=$true)][string]$Tag,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [string[]]$Changelog = @('Swipe down in fullscreen to exit with a 200ms fade and downward motion')
+    [string[]]$Changelog = @('Fix Like and Subscribe state handling', 'Reduce fullscreen swipe exit transition to 100ms')
 )
 $ErrorActionPreference = 'Stop'
 $package = & $Aapt dump badging $Apk

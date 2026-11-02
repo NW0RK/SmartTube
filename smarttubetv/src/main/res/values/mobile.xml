@@ -4,7 +4,7 @@
     <item name="mobile_enter_animating" type="id"/>
     <item name="mobile_selection_animation_pending" type="id"/>
     <integer name="mobile_motion_selection">220</integer>
-    <integer name="mobile_motion_exit_fullscreen">200</integer>
+    <integer name="mobile_motion_exit_fullscreen">100</integer>
     <item name="mobile_toolbar_title" type="id"/>
     <string name="mobile_brand_name" translatable="false">NikoTube</string>
     <color name="mobile_divider">#26FFFFFF</color>

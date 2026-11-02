@@ -148,7 +148,12 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             return;
         }
         Action a = actions.get(id);
-        if (a instanceof MultiAction) {
+        // The presenter interprets these values as the current selection and owns
+        // the toggle after the service request completes.
+        boolean presenterOwnsToggle = id == R.id.action_thumbs_up
+                || id == R.id.action_thumbs_down
+                || id == R.id.action_subscribe;
+        if (a instanceof MultiAction && !presenterOwnsToggle) {
             ((MultiAction) a).nextIndex();
             setButtonState(id, ((MultiAction) a).getIndex());
         }

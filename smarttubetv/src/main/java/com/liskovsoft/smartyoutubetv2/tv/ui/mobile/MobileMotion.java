@@ -70,12 +70,9 @@ final class MobileMotion {
                 .start();
     }
 
-    static void exitFullscreen(View view, Runnable onEnd) {
+    static void exitFullscreen(View view) {
         view.animate().cancel();
-        if (!ValueAnimator.areAnimatorsEnabled()) {
-            onEnd.run();
-            return;
-        }
+        if (!ValueAnimator.areAnimatorsEnabled()) return;
 
         view.animate()
                 .translationY(MobileUi.dp(view.getContext(), 32))
@@ -85,7 +82,6 @@ final class MobileMotion {
                 .withEndAction(() -> {
                     view.setTranslationY(0f);
                     view.setAlpha(1f);
-                    onEnd.run();
                 })
                 .start();
     }

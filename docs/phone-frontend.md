@@ -10,6 +10,12 @@ Fullscreen video now exits to portrait when the user swipes down at least 96dp; 
 
 Validation: installed stable 32.75 on the Galaxy A52 and verified that a downward swipe from fullscreen exited playback fullscreen and restored the system bars and watch details. Like/subscribe changes were not confirmed after sign-in, so their account-side behavior remains unverified.
 
+## Stable 32.76 update
+
+Like, dislike, and Subscribe now pass their current selection to the playback presenter, which owns the toggle and service request. The fullscreen swipe exit transition is shortened from 200ms to 100ms.
+
+Validation: installed stable 32.76 on the Galaxy A52. Like toggled selected/unselected; Subscribe changed to Subscribed and toggled back. Both account actions were restored to their original state. A landscape-to-portrait swipe showed portrait orientation on the first sample 40ms after the gesture completed. Automated tests were not run.
+
 ## Stable 32.74 update
 
 Like and Subscribe selected-state changes now use an interruptible 220ms squash-and-return animation that respects the Android animator scale setting. Initial metadata state changes remain still; only user-triggered changes animate.
