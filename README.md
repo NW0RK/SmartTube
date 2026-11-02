@@ -6,7 +6,7 @@ A mobile-focused fork of [SmartTube](https://github.com/yuliskov/SmartTube), wit
 
 ## Download and install
 
-1. [Download the NikoTube 32.72 universal APK](https://github.com/NW0RK/SmartTube/releases/download/v32.72/NikoTube_stable_32.72_universal.apk).
+1. [Download the NikoTube 32.73 universal APK](https://github.com/NW0RK/SmartTube/releases/download/v32.73/NikoTube_stable_32.73_universal.apk).
 2. Open the downloaded file on your Android phone or tablet.
 3. If prompted, allow your browser or file manager to install unknown apps, then complete installation.
 
@@ -32,7 +32,7 @@ Existing beta users install this stable package separately. Older stable install
 
 This fork's frontend is designed for Android phones and tablets. It does not support iOS, Samsung Tizen, LG webOS, or Amazon VegaOS.
 
-The 32.72 stable release passed seven focused UI regression tests. Broader tests have existing playback-fixture failures and an obsolete service-test API. Emulator and device checks were skipped at the user’s request. Experimental SABR live-stream enablement remains disabled.
+The 32.73 stable release was packaged without running tests, as requested. Like and subscribe requests now show service errors and restore the prior button state when a request fails. Experimental SABR live-stream enablement remains disabled.
 
 See [mobile development and device-test notes](docs/phone-frontend.md) and [upstream integration details](docs/upstream-integration.md) for the scope of verification and remaining checks.
 

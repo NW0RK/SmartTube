@@ -440,9 +440,11 @@ public class PlayerUIController extends BasePlayerController {
         }
 
         if (!dislike) {
-            callMediaItemObservable(mMediaItemService::setDislikeObserve);
+            callMediaItemObservable(mMediaItemService::setDislikeObserve,
+                    () -> getPlayer().setButtonState(R.id.action_thumbs_down, PlayerUI.BUTTON_OFF));
         } else {
-            callMediaItemObservable(mMediaItemService::removeDislikeObserve);
+            callMediaItemObservable(mMediaItemService::removeDislikeObserve,
+                    () -> getPlayer().setButtonState(R.id.action_thumbs_down, PlayerUI.BUTTON_ON));
         }
     }
 
@@ -467,9 +469,11 @@ public class PlayerUIController extends BasePlayerController {
         }
 
         if (!like) {
-            callMediaItemObservable(mMediaItemService::setLikeObserve);
+            callMediaItemObservable(mMediaItemService::setLikeObserve,
+                    () -> getPlayer().setButtonState(R.id.action_thumbs_up, PlayerUI.BUTTON_OFF));
         } else {
-            callMediaItemObservable(mMediaItemService::removeLikeObserve);
+            callMediaItemObservable(mMediaItemService::removeLikeObserve,
+                    () -> getPlayer().setButtonState(R.id.action_thumbs_up, PlayerUI.BUTTON_ON));
         }
     }
 
@@ -671,7 +675,7 @@ public class PlayerUIController extends BasePlayerController {
         disableSuggestionsResetTimeout();
     }
 
-    private void callMediaItemObservable(MediaItemObservable callable) {
+    private void callMediaItemObservable(MediaItemObservable callable, Runnable onError) {
         Video video = getVideo();
 
         if (video == null) {
@@ -681,7 +685,14 @@ public class PlayerUIController extends BasePlayerController {
 
         Observable<Void> observable = callable.call(video.mediaItem != null ? video.mediaItem : video.toMediaItem());
 
-        RxHelper.execute(observable);
+        RxHelper.execute(observable, error -> {
+            if (getContext() != null) {
+                MessageHelpers.showLongMessage(getContext(), error.getLocalizedMessage());
+            }
+            if (onError != null && getPlayer() != null) {
+                onError.run();
+            }
+        });
     }
 
     private boolean handleBackKey(int keyCode) {
@@ -1009,9 +1020,15 @@ public class PlayerUIController extends BasePlayerController {
         }
 
         if (buttonState == PlayerUI.BUTTON_OFF) {
-            callMediaItemObservable(mMediaItemService::subscribeObserve);
+            callMediaItemObservable(mMediaItemService::subscribeObserve, () -> {
+                if (getVideo() != null) getVideo().isSubscribed = false;
+                getPlayer().setButtonState(R.id.action_subscribe, PlayerUI.BUTTON_OFF);
+            });
         } else {
-            callMediaItemObservable(mMediaItemService::unsubscribeObserve);
+            callMediaItemObservable(mMediaItemService::unsubscribeObserve, () -> {
+                if (getVideo() != null) getVideo().isSubscribed = true;
+                getPlayer().setButtonState(R.id.action_subscribe, PlayerUI.BUTTON_ON);
+            });
         }
 
         getVideo().isSubscribed = buttonState == PlayerUI.BUTTON_OFF;

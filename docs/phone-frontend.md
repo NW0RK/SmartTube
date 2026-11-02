@@ -1,3 +1,9 @@
+## Stable 32.73 update
+
+Like, dislike, and subscribe actions now report service request failures and restore their previous selection state, instead of leaving the UI in a misleading optimistic state.
+
+Validation: tests were not run at the user's request. Runtime behavior remains unverified.
+
 ## Stable 32.72 update
 
 Removed the top section strip; its destinations remain under You. Home recommendations continue loading silently. Portrait video has an 8dp top gap, player overlay buttons are transparent, and descriptions use the comments-style sheet while keeping the video usable.
