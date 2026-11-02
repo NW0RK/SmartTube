@@ -33,6 +33,8 @@ final class MobileNavigationShell extends FrameLayout {
     private final int contentBottom;
     private final java.util.Map<View, Integer> scrollPadding = new java.util.WeakHashMap<>();
     private boolean keyboard, scrollHidden;
+    private float hiddenFraction;
+    private android.animation.ValueAnimator navigationAnimator;
     private final java.util.Set<View> observedScrollers = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     MobileNavigationShell(Context c, View content, LinearLayout navigation) {
@@ -40,11 +42,13 @@ final class MobileNavigationShell extends FrameLayout {
         this.content = content;
         this.navigation = navigation;
         contentBottom = content.getPaddingBottom();
-        setBackgroundColor(MobileUi.background(c));
+        setBackgroundColor(Color.BLACK);
         addView(content, new LayoutParams(-1, -1));
         navigation.setGravity(Gravity.CENTER_VERTICAL);
         navigation.setPadding(MobileUi.dp(c, 8), 0, MobileUi.dp(c, 8), 0);
-        navigation.setBackgroundColor(c.getColor(R.color.mobile_surface));
+        navigation.setBackgroundColor(c.getColor(R.color.mobile_navigation_bottom));
+        if (c instanceof android.app.Activity)
+            ((android.app.Activity) c).getWindow().setNavigationBarColor(Color.BLACK);
         navigation.setMinimumHeight(MobileUi.dp(c, 64));
         navigation.setElevation(0);
         LayoutParams params = new LayoutParams(-1, -2, Gravity.BOTTOM);
@@ -78,9 +82,9 @@ final class MobileNavigationShell extends FrameLayout {
 
     @Override protected void onMeasure(int widthSpec, int heightSpec) {
         padScrollingContent(content, 0);
-        if (!keyboard && !scrollHidden) measureChildWithMargins(navigation, widthSpec, 0, heightSpec, 0);
+        if (!keyboard) measureChildWithMargins(navigation, widthSpec, 0, heightSpec, 0);
         LayoutParams params = (LayoutParams) content.getLayoutParams();
-        int clearance = keyboard || scrollHidden ? 0 : navigation.getMeasuredHeight();
+        int clearance = keyboard ? 0 : Math.round(navigation.getMeasuredHeight() * (1f - hiddenFraction));
         if (params.bottomMargin != clearance) {
             params.bottomMargin = clearance;
             content.setLayoutParams(params);
@@ -96,28 +100,57 @@ final class MobileNavigationShell extends FrameLayout {
     }
 
     void setKeyboardVisible(boolean visible) {
+        if (keyboard == visible) return;
         keyboard = visible;
-        navigation.setVisibility(visible || scrollHidden ? GONE : VISIBLE);
+        if (navigationAnimator != null) navigationAnimator.cancel();
+        hiddenFraction = scrollHidden ? 1f : 0f;
+        navigation.setTranslationY(navigation.getHeight() * hiddenFraction);
+        navigation.setVisibility(visible || scrollHidden ? INVISIBLE : VISIBLE);
         updateClearance();
     }
 
     void revealNavigation() {
-        scrollHidden = false;
-        navigation.setVisibility(keyboard ? GONE : VISIBLE);
-        updateClearance();
+        animateNavigation(false);
     }
 
     void onUserScroll(int dy) {
         if (dy == 0 || keyboard) return;
         boolean hide = dy > 0;
         if (scrollHidden == hide) return;
+        animateNavigation(hide);
+    }
+
+    private void animateNavigation(boolean hide) {
         scrollHidden = hide;
-        navigation.setVisibility(hide ? GONE : VISIBLE);
-        updateClearance();
+        if (navigationAnimator != null) navigationAnimator.cancel();
+        float target = hide ? 1f : 0f;
+        if (keyboard || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            hiddenFraction = target;
+            navigation.setTranslationY(navigation.getHeight() * target);
+            navigation.setVisibility(keyboard || hide ? INVISIBLE : VISIBLE);
+            updateClearance();
+            return;
+        }
+        navigation.setVisibility(VISIBLE);
+        navigationAnimator = android.animation.ValueAnimator.ofFloat(hiddenFraction, target);
+        navigationAnimator.setDuration(getResources().getInteger(R.integer.mobile_motion_navigation));
+        navigationAnimator.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        navigationAnimator.addUpdateListener(animation -> {
+            hiddenFraction = (float) animation.getAnimatedValue();
+            navigation.setTranslationY(navigation.getHeight() * hiddenFraction);
+            navigation.setVisibility(hiddenFraction >= 1f ? INVISIBLE : VISIBLE);
+            updateClearance();
+        });
+        navigationAnimator.start();
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        if (navigationAnimator != null) navigationAnimator.cancel();
+        super.onDetachedFromWindow();
     }
 
     private void updateClearance() {
-        int clearance = keyboard || scrollHidden ? 0 : navigation.getHeight();
+        int clearance = keyboard ? 0 : Math.round(navigation.getHeight() * (1f - hiddenFraction));
         LayoutParams params = (LayoutParams) content.getLayoutParams();
         if (params.bottomMargin != clearance) {
             params.bottomMargin = clearance;
@@ -179,6 +212,9 @@ final class MobileNavigationShell extends FrameLayout {
         LinearLayout row = new LinearLayout(activity);
         addDestination(row, activity, R.drawable.icon_home, R.string.header_home, MediaGroup.TYPE_HOME);
         addDestination(row, activity, R.drawable.mobile_history, R.string.header_history, MediaGroup.TYPE_HISTORY);
+        MobileUi.addNavigation(row, MobileUi.browseNavigation(activity, R.drawable.action_search,
+                activity.getString(R.string.action_search),
+                () -> com.liskovsoft.smartyoutubetv2.common.app.presenters.SearchPresenter.instance(activity).startSearch(null)));
         addDestination(row, activity, R.drawable.ic_user, R.string.mobile_you, YOU);
         return row;
     }

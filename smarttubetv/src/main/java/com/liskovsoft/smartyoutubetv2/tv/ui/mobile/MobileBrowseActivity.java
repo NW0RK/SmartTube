@@ -35,31 +35,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         super.onCreate(state);
         presenter = BrowsePresenter.instance(this);
         presenter.setView(this);
-        LinearLayout root = MobileUi.column(this), top = MobileUi.toolbar(this, getString(R.string.mobile_brand_name), null);
-        TextView brandTitle = top.findViewById(R.id.mobile_toolbar_title);
-        brandTitle.setSingleLine(true);
-        brandTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        ImageView brand = new ImageView(this);
-        brand.setImageResource(R.drawable.mobile_top_left);
-        brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        brand.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        top.addView(brand, 0, new LinearLayout.LayoutParams(MobileUi.dp(this, 40), MobileUi.dp(this, 32)));
-        top.addView(
-                MobileUi.browseIcon(
-                        this,
-                        R.drawable.action_search,
-                        getString(R.string.action_search),
-                        () -> SearchPresenter.instance(this).startSearch(null)),
-                new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
-        MobileUi.addSeparator(top);
-        top.addView(
-                MobileUi.browseIcon(
-                        this,
-                        R.drawable.ic_user,
-                        getString(R.string.mobile_account),
-                        () -> AccountSelectionPresenter.instance(this).show(true)),
-                new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
-        root.addView(top);
+        LinearLayout root = MobileUi.column(this);
         HorizontalScrollView strip = new HorizontalScrollView(this);
         sectionStrip = strip;
         chips = new LinearLayout(this);
@@ -85,6 +61,8 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
                 getString(R.string.header_history),
                 MediaGroup.TYPE_HISTORY,
                 R.drawable.mobile_history);
+        MobileUi.addNavigation(tabs, MobileUi.browseNavigation(this, R.drawable.action_search,
+                getString(R.string.action_search), () -> SearchPresenter.instance(this).startSearch(null)));
         youTab = MobileUi.browseNavigation(this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou);
         MobileUi.addNavigation(tabs, youTab);
         navigationShell = new MobileNavigationShell(this, root, tabs);

@@ -26,7 +26,7 @@ $manifest = [ordered]@{
     apkSize = (Get-Item -LiteralPath $Apk).Length
     apkSha256 = $hash
     releaseUrl = "https://github.com/NW0RK/SmartTube/releases/tag/$Tag"
-    changelog = @('YouTube-first dark design and a player-first watch page', 'Home, History and You navigation that hides while scrolling', 'Button feedback that follows the button shape', 'Vertical search suggestions and consistent menus')
+    changelog = @('Removed the browse top bar; Search is now in bottom navigation', 'OLED black icon-only navigation with smooth scroll animations', 'Returning from comment replies restores your previous position')
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 -LiteralPath (Join-Path $OutputDirectory 'nikotube-stable.json')

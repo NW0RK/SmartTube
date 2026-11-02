@@ -72,10 +72,12 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private static final class Backup implements CommentsReceiver.Backup {
         final List<CommentItem> items;
         final CommentGroup group;
+        final int scrollY;
 
-        Backup(List<CommentItem> items, CommentGroup group) {
+        Backup(List<CommentItem> items, CommentGroup group, int scrollY) {
             this.items = new ArrayList<>(items);
             this.group = group;
+            this.scrollY = scrollY;
         }
     }
 
@@ -483,6 +485,11 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                                         if (currentGroup != null
                                                 && currentGroup.getNextCommentsKey() != null)
                                             appendLoadMore(receiver, currentGroup);
+                                        ScrollView restoredScroller = scroller;
+                                        restoredScroller.post(() -> {
+                                            if (comments == receiver && scroller == restoredScroller)
+                                                restoredScroller.scrollTo(0, backup.scrollY);
+                                        });
                                     });
                         else receiver.onStart();
                     }
@@ -619,7 +626,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         if (comments != null) {
             CommentsReceiver receiver = comments;
             comments = null;
-            receiver.onFinish(new Backup(messages, currentGroup));
+            receiver.onFinish(new Backup(messages, currentGroup, scroller == null ? 0 : scroller.getScrollY()));
             receiver.setCallback(null);
         }
         if (chat != null) {

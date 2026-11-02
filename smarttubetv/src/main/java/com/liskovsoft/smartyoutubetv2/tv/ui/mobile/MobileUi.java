@@ -197,7 +197,8 @@ final class MobileUi {
         if (icon == R.drawable.icon_home) icon = R.drawable.mobile_home;
         else if (icon == R.drawable.icon_subscriptions) icon = R.drawable.mobile_subscriptions;
         else if (icon == R.drawable.ic_user) icon = R.drawable.mobile_account;
-        Button button = button(c, label, action);
+        Button button = button(c, "", action);
+        button.setContentDescription(label);
         button.setTag(R.id.mobile_navigation_icon, icon);
         button.setBackgroundColor(Color.TRANSPARENT);
         button.setPadding(0, dp(c, 4), 0, dp(c, 4));
@@ -309,7 +310,7 @@ final class MobileUi {
     static Button browseNavigation(Context c, int icon, String label, Runnable action) {
         Button button = navigationButton(c, icon, label, action);
         button.setContentDescription(label);
-        navigationIcon(button, button.getCompoundDrawables()[1]);
+        navigationIcon(button, c.getDrawable((Integer) button.getTag(R.id.mobile_navigation_icon)).mutate());
         button.setMinHeight(dp(c, 48));
         button.setMinimumHeight(dp(c, 48));
         button.setCompoundDrawablePadding(dp(c, 4));
@@ -320,10 +321,14 @@ final class MobileUi {
     static void navigationIcon(Button button, android.graphics.drawable.Drawable drawable) {
         int size = dp(button.getContext(), 24);
         drawable.setBounds(0, 0, size, size);
-        button.setForeground(null);
-        button.setCompoundDrawables(null, drawable, null, null);
-        button.setCompoundDrawablePadding(dp(button.getContext(), 4));
-        button.setPadding(0, dp(button.getContext(), 4), 0, dp(button.getContext(), 4));
+        android.graphics.drawable.LayerDrawable centered = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{drawable});
+        centered.setLayerSize(0, size, size);
+        centered.setLayerGravity(0, Gravity.CENTER);
+        button.setForeground(centered);
+        button.setCompoundDrawables(null, null, null, null);
+        button.setText("");
+        button.setPadding(0, 0, 0, 0);
     }
 
     static void addSeparator(LinearLayout row) {

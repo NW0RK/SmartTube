@@ -1,3 +1,7 @@
+## Stable 32.71 update
+
+Removed the browse branding toolbar and moved Search into the icon-only, OLED black bottom navigation. Navigation now slides with 220ms ease-in/ease-out motion. Returning from comment replies restores the parent comment scroll position. No tests, lint, emulator checks, or device checks were run for this release, as requested.
+
 # Phone frontend
 
 ## Stable design refresh — November 2, 2026

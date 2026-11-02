@@ -3,6 +3,7 @@ name: NikoTube
 description: Familiar video browsing with NikoTube identity, designed for Android phones.
 colors:
   background: "#0F0F0F"
+  navigation: "#000000"
   surface: "#212121"
   surface-raised: "#272727"
   text-primary: "#F1F1F1"
@@ -35,6 +36,7 @@ The executable palette lives in smarttubetv/src/main/res/values/mobile_browse.xm
 | Role | Android resource | Use |
 |---|---|---|
 | Background | mobile_background | Pages and flat content sections |
+| Navigation | mobile_navigation_bottom | OLED black bottom navigation |
 | Surface | mobile_surface | Chips, actions, placeholders, dialogs |
 | Raised surface | mobile_surface_raised | Reserved tonal layer for raised controls |
 | Primary text | mobile_text_primary | Titles and strong labels |
@@ -45,14 +47,14 @@ The executable palette lives in smarttubetv/src/main/res/values/mobile_browse.xm
 White Subscribe becomes charcoal with white text when subscribed. Navigation selection uses filled icons and primary text. Keep accent coverage restrained. Video scrims and duration badges may use black translucency; menus and comments remain opaque.
 
 ## Typography
-Use system sans, sp units, and Android font scaling. Feed titles use mobile_title_size (16sp), metadata mobile_meta_size (13sp), watch titles mobile_watch_title_size (18sp), and page headings mobile_heading_size (24sp). Body copy is 16sp; control labels 14sp. Navigation labels are 11sp and may wrap.
+Use system sans, sp units, and Android font scaling. Feed titles use mobile_title_size (16sp), metadata mobile_meta_size (13sp), watch titles mobile_watch_title_size (18sp), and page headings mobile_heading_size (24sp). Body copy is 16sp; control labels 14sp. Bottom navigation uses centered icons without visible labels; retain descriptive accessibility labels.
 
 Feed and recommendation titles truncate after two lines. Creator and statistics remain separate. Wrapping settings labels and descriptions must not truncate. Never lower system font scale to fit a screenshot.
 
 ## Layout
 Use mobile_page_padding (16dp) for page gutters and mobile_space (8dp) for related content. Separate groups by 16–24dp. Preserve 16:9 thumbnails through MobileThumbnailView. Metadata and overflow live below the thumbnail. Avoid additional card wrappers.
 
-Compact phones retain Home, History, and You. MobileNavigationShell owns measured clearance, repeated insets, and keyboard visibility. Hide the bottom bar on downward user scrolling and restore it on upward scrolling; release the reserved content clearance while hidden. Subscriptions remains in the section chips. Retain the existing two-column feed at 600dp and above and full-span headings; tablet rail redesign is deferred. Preserve scroll and selected destinations through recreation.
+Remove the persistent browse branding toolbar. Compact phones use Home, History, Search, and You icons; Search moves to bottom navigation so it remains accessible. MobileNavigationShell owns measured clearance, repeated insets, and keyboard visibility. Use an OLED black (#000000) bottom bar. Slide it down on downward user scrolling and restore it upward with interruptible 220ms ease-in/ease-out motion. Animate the reserved clearance with the bar; respect disabled system animations. Subscriptions remains in the section chips. Retain the existing two-column feed at 600dp and above and full-span headings; tablet rail redesign is deferred. Preserve scroll and selected destinations through recreation.
 
 Watch starts with the video, without a persistent branding header. Collapse, captions, and settings remain on its overlay. Search is available in More options. Keep existing fullscreen, PiP, comments side-panel, and playback continuity behavior.
 
@@ -63,7 +65,7 @@ Flat by default. Use tonal surfaces for grouping, native dialog/menu elevation o
 12dp corners for thumbnails and content-sized panels. Small action buttons use pill silhouettes. Player video uses square, unclipped corners. Icon hit regions stay at least 48dp with 24dp artwork. Comments retain rounded sheet corners and their existing window geometry.
 
 ## Components
-MobileUi owns reusable buttons, icon buttons, navigation, menu rows, input styling, and feedback. Use drawable artwork rather than Unicode symbols. Pressed, focused, and hovered fills must match the resting corner radius across the entire button; never use an expanding circular ripple on text actions. Toolbar actions have transparent backgrounds and spacing instead of vertical rules.
+MobileUi owns reusable buttons, icon buttons, navigation, menu rows, input styling, and feedback. Use drawable artwork rather than Unicode symbols. Pressed, focused, and hovered fills must match the resting corner radius across the entire button; never use an expanding circular ripple on text actions. Functional secondary-screen toolbars retain their back/actions; browsing has no branding toolbar.
 
 - Chips: charcoal idle, white selected with inverse text; preserve service-backed section meaning.
 - Cards: shared browse/recommendation geometry, two-line title, separate metadata, accessible drawable overflow. Clear missing recycled metadata.
@@ -71,6 +73,7 @@ MobileUi owns reusable buttons, icon buttons, navigation, menu rows, input styli
 - You/channel: real account/channel imagery when available; accurate fallback identity. Keep account actions and existing library destinations.
 - Settings: flat, full-width rows with native switches/radio/checkbox controls. MobileAlertDialogTheme scopes dark alerts to mobile.
 - Loading: static initial placeholders; existing rows remain during pagination with inline progress. Errors keep loaded content and expose Retry where supported. Empty search explains how to recover.
+- Comments: save the loaded list and scroll offset before opening replies; restore the same position when returning to the parent comments.
 - Feedback: whole-shape pressed highlights, visible focus, selected/disabled state. MobileMotion uses interruptible 200ms entry and 180ms control fades, respecting system animation settings.
 
 ## Do's and Don'ts
