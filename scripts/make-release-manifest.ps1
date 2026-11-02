@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Aapt,
     [Parameter(Mandatory=$true)][string]$Tag,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [string[]]$Changelog = @('Fix Like and Subscribe state handling', 'Reduce fullscreen swipe exit transition to 100ms')
+    [string[]]$Changelog = @('Show white Like and Dislike icons when selected')
 )
 $ErrorActionPreference = 'Stop'
 $package = & $Aapt dump badging $Apk

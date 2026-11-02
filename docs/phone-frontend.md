@@ -16,6 +16,12 @@ Like, dislike, and Subscribe now pass their current selection to the playback pr
 
 Validation: installed stable 32.76 on the Galaxy A52. Like toggled selected/unselected; Subscribe changed to Subscribed and toggled back. Both account actions were restored to their original state. A landscape-to-portrait swipe showed portrait orientation on the first sample 40ms after the gesture completed. Automated tests were not run.
 
+## Stable 32.77 update
+
+Like and Dislike icons are secondary gray when idle and white when selected. The Like count retains the accent color while liked.
+
+Validation: installed stable 32.77 on the Galaxy A52. Captures confirmed gray Like and Dislike icons at rest, white Like and Dislike icons when selected, and an accent colored Like count while liked. Toggled reactions back to their original unselected state. Automated tests were not run.
+
 ## Stable 32.74 update
 
 Like and Subscribe selected-state changes now use an interruptible 220ms squash-and-return animation that respects the Android animator scale setting. Initial metadata state changes remain still; only user-triggered changes animate.

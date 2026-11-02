@@ -1102,16 +1102,34 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 b.setText(a.getLabel1());
             b.setSelected(state == BUTTON_ON);
             int color = state == BUTTON_ON && id != R.id.action_subscribe ? MobileUi.accent(requireContext()) : Color.WHITE;
+            boolean reaction = id == R.id.action_thumbs_up || id == R.id.action_thumbs_down;
+            int iconColor = reaction
+                    ? state == BUTTON_ON ? Color.WHITE : requireContext().getColor(R.color.mobile_text_secondary)
+                    : color;
             if (id != R.id.action_subscribe) b.setTextColor(color);
             for (android.graphics.drawable.Drawable icon : b.getCompoundDrawables())
-                if (icon != null) icon.setTint(color);
+                if (icon != null) tintButtonIcon(icon, iconColor);
             if (b.getForeground() != null)
-                b.getForeground().setTint(state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE);
+                tintButtonIcon(b.getForeground(), reaction ? iconColor
+                        : state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE);
             boolean selectionChanged = previousState != null
                     && (previousState == BUTTON_ON) != (state == BUTTON_ON);
             if (selectionChanged
                     && Boolean.TRUE.equals(b.getTag(R.id.mobile_selection_animation_pending)))
                 MobileMotion.selection(b, state == BUTTON_ON);
+        }
+    }
+
+    private void tintButtonIcon(android.graphics.drawable.Drawable drawable, int color) {
+        if (drawable instanceof MobilePlayerIcon) {
+            drawable.setTint(color);
+        } else if (drawable instanceof android.graphics.drawable.LayerDrawable) {
+            android.graphics.drawable.LayerDrawable layers = (android.graphics.drawable.LayerDrawable) drawable;
+            for (int i = 0; i < layers.getNumberOfLayers(); i++) {
+                tintButtonIcon(layers.getDrawable(i), color);
+            }
+        } else {
+            drawable.setTint(color);
         }
     }
 

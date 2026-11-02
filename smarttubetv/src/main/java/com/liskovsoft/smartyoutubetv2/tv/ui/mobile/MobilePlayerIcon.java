@@ -7,6 +7,8 @@ import android.graphics.drawable.Drawable;
 final class MobilePlayerIcon extends Drawable {
     private final String name;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private int iconColor = Color.WHITE;
+    private ColorFilter iconColorFilter;
 
     MobilePlayerIcon(String name) {
         this.name = name;
@@ -24,6 +26,8 @@ final class MobilePlayerIcon extends Drawable {
     }
 
     @Override public void draw(Canvas c) {
+        paint.setColor(iconColor);
+        paint.setColorFilter(iconColorFilter);
         c.save();
         c.translate(getBounds().left, getBounds().top);
         c.scale(getBounds().width() / 24f, getBounds().height() / 24f);
@@ -100,6 +104,13 @@ final class MobilePlayerIcon extends Drawable {
     }
 
     @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); }
-    @Override public void setColorFilter(ColorFilter filter) { paint.setColorFilter(filter); }
+    @Override public void setColorFilter(ColorFilter filter) {
+        iconColorFilter = filter;
+        invalidateSelf();
+    }
+    @Override public void setTint(int color) {
+        iconColor = color;
+        invalidateSelf();
+    }
     @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
 }

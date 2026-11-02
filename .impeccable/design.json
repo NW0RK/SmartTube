@@ -25,7 +25,7 @@
       },
       {
         "name": "fullscreen-exit",
-        "value": "200ms cubic-bezier(0.2,0,0,1)",
+        "value": "100ms cubic-bezier(0.2,0,0,1)",
         "purpose": "Downward fullscreen dismissal with fade, respects system animator scale"
       }
     ],
@@ -43,7 +43,7 @@
     "navigation": "No browse branding toolbar. OLED black (#000000), icon-only Home, History, Search, You with accessible labels. Ease in/out while hiding down and revealing up; preserve keyboard clearance. No top section strip; former destinations including Music and Subscriptions are accessible under You.",
     "feedback": "Whole-shape pressed/focused/hovered fills preserve each control corner radius. No circular waves on text actions.",
     "comments": "Restore loaded comments and scroll offset when returning from replies.",
-    "playback": "Portrait video and controls have an 8dp gap below the safe top edge; no gap in fullscreen or PiP. Overlay buttons are transparent at rest with visible icons and state feedback.",
+    "playback": "Portrait video and controls have an 8dp gap below the safe top edge; no gap in fullscreen or PiP. Like and Dislike icons use secondary text color at rest and turn white when selected; the Like count uses accent when selected. Overlay buttons are transparent at rest with visible icons and state feedback.",
     "loading": "Home pagination remains automatic and silent, without spinner or reserved space; retain initial placeholders and recoverable errors.",
     "description": "Use the comments-style sheet below the actual video bottom in portrait and beside video in landscape, preserving video interaction, links, timestamps, and Close/Back dismissal."
   },

@@ -6,7 +6,7 @@ A mobile-focused fork of [SmartTube](https://github.com/yuliskov/SmartTube), wit
 
 ## Download and install
 
-1. [Download the NikoTube 32.76 universal APK](https://github.com/NW0RK/SmartTube/releases/download/v32.76/NikoTube_stable_32.76_universal.apk).
+1. [Download the NikoTube 32.77 universal APK](https://github.com/NW0RK/SmartTube/releases/download/v32.77/NikoTube_stable_32.77_universal.apk).
 2. Open the downloaded file on your Android phone or tablet.
 3. If prompted, allow your browser or file manager to install unknown apps, then complete installation.
 
