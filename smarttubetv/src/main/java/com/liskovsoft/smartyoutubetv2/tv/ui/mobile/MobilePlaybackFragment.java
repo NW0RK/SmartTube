@@ -152,7 +152,16 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             ((MultiAction) a).nextIndex();
             setButtonState(id, ((MultiAction) a).getIndex());
         }
-        mPlaybackPresenter.onButtonClicked(id, getButtonState(id));
+        Button selectionButton = buttons.get(id);
+        boolean animateSelection = id == R.id.action_thumbs_up || id == R.id.action_subscribe;
+        if (animateSelection && selectionButton != null)
+            selectionButton.setTag(R.id.mobile_selection_animation_pending, true);
+        try {
+            mPlaybackPresenter.onButtonClicked(id, getButtonState(id));
+        } finally {
+            if (animateSelection && selectionButton != null)
+                selectionButton.setTag(R.id.mobile_selection_animation_pending, false);
+        }
     }
 
     private Button actionButton(LinearLayout row, int id, String label) {
@@ -1065,7 +1074,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
 
     @Override
     public void setButtonState(int id, int state) {
-        states.put(id, state);
+        Integer previousState = states.put(id, state);
         Action a = actions.get(id);
         if (a instanceof MultiAction && state >= 0) ((MultiAction) a).setIndex(state);
         Button b = buttons.get(id);
@@ -1093,6 +1102,11 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 if (icon != null) icon.setTint(color);
             if (b.getForeground() != null)
                 b.getForeground().setTint(state == BUTTON_ON ? MobileUi.accent(requireContext()) : Color.WHITE);
+            boolean selectionChanged = previousState != null
+                    && (previousState == BUTTON_ON) != (state == BUTTON_ON);
+            if (selectionChanged
+                    && Boolean.TRUE.equals(b.getTag(R.id.mobile_selection_animation_pending)))
+                MobileMotion.selection(b, state == BUTTON_ON);
         }
     }
 

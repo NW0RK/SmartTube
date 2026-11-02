@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Aapt,
     [Parameter(Mandatory=$true)][string]$Tag,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [string[]]$Changelog = @('Like, dislike, and subscribe failures now show an error and restore the previous button state')
+    [string[]]$Changelog = @('Like and Subscribe selections now have interruptible motion feedback that respects Android animator settings')
 )
 $ErrorActionPreference = 'Stop'
 $package = & $Aapt dump badging $Apk

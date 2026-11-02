@@ -75,7 +75,7 @@ MobileUi owns reusable buttons, icon buttons, navigation, menu rows, input styli
 - Loading: static initial placeholders; existing rows remain during pagination with inline progress, except Home loads further recommendations silently without a spinner or reserved status space. Errors keep loaded content and expose Retry where supported. Empty search explains how to recover.
 - Description: use the comments-style player sheet below the actual video bottom in portrait and beside the video in landscape. Keep video controls usable, links and timestamps active, and Close/Back dismissal. Other long-text dialogs retain normal presentation.
 - Comments: save the loaded list and scroll offset before opening replies; restore the same position when returning to the parent comments.
-- Feedback: whole-shape pressed highlights, visible focus, selected/disabled state. MobileMotion uses interruptible 200ms entry and 180ms control fades, respecting system animation settings.
+- Feedback: whole-shape pressed highlights, visible focus, selected/disabled state. Like and Subscribe selections use an interruptible 220ms squash-and-return pulse. MobileMotion respects system animation settings for entry, controls, navigation, and selection feedback.
 
 ## Do's and Don'ts
 - Do consult this file before changing mobile UI, then inspect the relevant resources and shared helpers.

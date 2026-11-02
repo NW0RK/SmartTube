@@ -17,6 +17,11 @@
         "name": "navigation",
         "value": "220ms ease-in-out",
         "purpose": "Interruptible bottom navigation slide and clearance, respects system animator scale"
+      },
+      {
+        "name": "selection",
+        "value": "220ms cubic-bezier(0.2,0,0,1)",
+        "purpose": "Like and Subscribe selection squash-and-return feedback, respects system animator scale"
       }
     ],
     "breakpoints": [

@@ -46,4 +46,27 @@ final class MobileMotion {
                     if (!show) view.setVisibility(View.GONE);
                 }).start();
     }
+
+    static void selection(View view, boolean selected) {
+        view.animate().cancel();
+        view.setScaleX(1f);
+        view.setScaleY(1f);
+        if (!ValueAnimator.areAnimatorsEnabled()) return;
+
+        long phaseDuration = view.getResources().getInteger(R.integer.mobile_motion_selection) / 2L;
+        float pressedScale = selected ? 0.92f : 0.96f;
+        PathInterpolator easing = new PathInterpolator(0.2f, 0f, 0f, 1f);
+        view.animate()
+                .scaleX(pressedScale)
+                .scaleY(pressedScale)
+                .setDuration(phaseDuration)
+                .setInterpolator(easing)
+                .withEndAction(() -> view.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(phaseDuration)
+                        .setInterpolator(easing)
+                        .start())
+                .start();
+    }
 }

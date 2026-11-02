@@ -4,6 +4,12 @@ Like, dislike, and subscribe actions now report service request failures and res
 
 Validation: tests were not run at the user's request. Runtime behavior remains unverified.
 
+## Stable 32.74 update
+
+Like and Subscribe selected-state changes now use an interruptible 220ms squash-and-return animation that respects the Android animator scale setting. Initial metadata state changes remain still; only user-triggered changes animate.
+
+Validation: tests and device checks were not run at the user's request. Runtime behavior remains unverified.
+
 ## Stable 32.72 update
 
 Removed the top section strip; its destinations remain under You. Home recommendations continue loading silently. Portrait video has an 8dp top gap, player overlay buttons are transparent, and descriptions use the comments-style sheet while keeping the video usable.
