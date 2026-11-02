@@ -16,6 +16,8 @@ public class MobilePlaybackActivity extends MobileActivity {
     private OrientationEventListener orientationListener;
     private boolean portraitLocked;
     private boolean forcedFullscreen, stopped;
+    private float fullscreenSwipeStartX = Float.NaN;
+    private float fullscreenSwipeStartY = Float.NaN;
 
     @Override
     public void onCreate(Bundle state) {
@@ -73,6 +75,45 @@ public class MobilePlaybackActivity extends MobileActivity {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         } else setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         updateWindow();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        boolean exitOnRelease = false;
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+            if (isFullscreen() && !isInPictureInPictureMode()) {
+                fullscreenSwipeStartX = event.getX();
+                fullscreenSwipeStartY = event.getY();
+            } else {
+                clearFullscreenSwipe();
+            }
+        } else if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+            if (isFullscreen() && !isInPictureInPictureMode()
+                    && !Float.isNaN(fullscreenSwipeStartY)) {
+                float dx = event.getX() - fullscreenSwipeStartX;
+                float dy = event.getY() - fullscreenSwipeStartY;
+                int threshold = Math.max(
+                        MobileUi.dp(this, 96), ViewConfiguration.get(this).getScaledTouchSlop() * 4);
+                exitOnRelease = dy >= threshold && dy > Math.abs(dx) * 1.25f;
+            }
+            clearFullscreenSwipe();
+        } else if (event.getActionMasked() == MotionEvent.ACTION_CANCEL
+                || event.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
+            clearFullscreenSwipe();
+        }
+
+        boolean handled = super.dispatchTouchEvent(event);
+        if (exitOnRelease && !isFinishing()) {
+            View content = findViewById(android.R.id.content);
+            if (content != null) MobileMotion.exitFullscreen(content, this::exitFullscreen);
+            else exitFullscreen();
+        }
+        return handled || exitOnRelease;
+    }
+
+    private void clearFullscreenSwipe() {
+        fullscreenSwipeStartX = Float.NaN;
+        fullscreenSwipeStartY = Float.NaN;
     }
 
     private void updateWindow() {

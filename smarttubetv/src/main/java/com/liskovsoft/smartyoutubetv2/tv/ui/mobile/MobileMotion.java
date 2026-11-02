@@ -69,4 +69,24 @@ final class MobileMotion {
                         .start())
                 .start();
     }
+
+    static void exitFullscreen(View view, Runnable onEnd) {
+        view.animate().cancel();
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            onEnd.run();
+            return;
+        }
+
+        view.animate()
+                .translationY(MobileUi.dp(view.getContext(), 32))
+                .alpha(0.85f)
+                .setDuration(view.getResources().getInteger(R.integer.mobile_motion_exit_fullscreen))
+                .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
+                .withEndAction(() -> {
+                    view.setTranslationY(0f);
+                    view.setAlpha(1f);
+                    onEnd.run();
+                })
+                .start();
+    }
 }

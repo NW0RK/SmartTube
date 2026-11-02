@@ -4,6 +4,12 @@ Like, dislike, and subscribe actions now report service request failures and res
 
 Validation: tests were not run at the user's request. Runtime behavior remains unverified.
 
+## Stable 32.75 update
+
+Fullscreen video now exits to portrait when the user swipes down at least 96dp; the view shifts downward and fades over 200ms, respecting Android's animator scale setting. PiP is excluded.
+
+Validation: installed stable 32.75 on the Galaxy A52 and verified that a downward swipe from fullscreen exited playback fullscreen and restored the system bars and watch details. Like/subscribe changes were not confirmed after sign-in, so their account-side behavior remains unverified.
+
 ## Stable 32.74 update
 
 Like and Subscribe selected-state changes now use an interruptible 220ms squash-and-return animation that respects the Android animator scale setting. Initial metadata state changes remain still; only user-triggered changes animate.

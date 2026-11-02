@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$Aapt,
     [Parameter(Mandatory=$true)][string]$Tag,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [string[]]$Changelog = @('Like and Subscribe selections now have interruptible motion feedback that respects Android animator settings')
+    [string[]]$Changelog = @('Swipe down in fullscreen to exit with a 200ms fade and downward motion')
 )
 $ErrorActionPreference = 'Stop'
 $package = & $Aapt dump badging $Apk
