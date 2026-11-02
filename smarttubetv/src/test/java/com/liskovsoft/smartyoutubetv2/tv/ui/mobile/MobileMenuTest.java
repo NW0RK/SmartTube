@@ -189,7 +189,7 @@ public class MobileMenuTest {
         controller.destroy();
     }
 
-    @Test public void topTabsPrioritizeLibraryAndKeepCategoryDestinationsOnlyInYou() {
+    @Test public void removedTopStripDestinationsRemainAvailableInYou() {
         org.robolectric.android.controller.ActivityController<MobileBrowseActivity> controller =
                 Robolectric.buildActivity(MobileBrowseActivity.class).create();
         MobileBrowseActivity activity = controller.get();
@@ -202,13 +202,9 @@ public class MobileMenuTest {
                 section(MediaGroup.TYPE_SUBSCRIPTIONS, "Subscriptions"), section(MediaGroup.TYPE_MUSIC, "Music"),
                 section(MediaGroup.TYPE_HOME, "Home"));
         for (BrowseSection s : sections) activity.addSection(-1, s);
-        LinearLayout chips = org.robolectric.util.ReflectionHelpers.getField(activity, "chips");
-        List<String> labels = new ArrayList<>();
-        for (int i = 0; i < chips.getChildCount(); i++) labels.add(((TextView) chips.getChildAt(i)).getText().toString());
-        assertEquals(Arrays.asList("Home", "Music", "Subscriptions", "Playlists", "History"), labels);
         org.robolectric.util.ReflectionHelpers.callInstanceMethod(activity, "showYou");
         View root = activity.getWindow().getDecorView();
-        for (String label : new String[]{"Kids", "Sports", "LIVE", "Gaming", "News", "Channels"})
+        for (String label : new String[]{"Kids", "Sports", "LIVE", "Gaming", "News", "Channels", "Music", "Subscriptions", "Playlists"})
             assertNotNull(text(root, label));
         controller.destroy();
     }

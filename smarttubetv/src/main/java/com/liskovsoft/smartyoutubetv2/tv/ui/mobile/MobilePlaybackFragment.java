@@ -138,6 +138,9 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             return;
         }
         if (getButtonState(id) == BUTTON_DISABLED) return;
+        if (id == R.id.action_info && getVideo() != null)
+            MobileDialogActivity.requestDescription(String.format("%s - %s",
+                    getVideo().getTitleFull(), getVideo().getAuthor()));
         if (id == R.id.action_share && getVideo() != null && buttons.get(id) != null)
             MobileDialogActivity.requestPopup(buttons.get(id), getVideo().getTitle());
         if (id == R.id.lb_control_closed_captioning) {
@@ -737,10 +740,13 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
                 ? -MobileUi.dp(requireContext(), 24) : 0);
 
         suggestions.setVisibility(full ? View.GONE : View.VISIBLE);
-        stage.setLayoutParams(
-                new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams stageParams = new LinearLayout.LayoutParams(
                         full && commentsPanelWidth > 0 ? Math.max(1, root.getWidth() - commentsPanelWidth) : -1,
-                        full ? 0 : Math.max(1, root.getWidth()) * 9 / 16, full ? 1 : 0));
+                        full ? 0 : Math.max(1, root.getWidth()) * 9 / 16, full ? 1 : 0);
+        stageParams.topMargin = !full && getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_PORTRAIT
+                ? getResources().getDimensionPixelSize(R.dimen.mobile_space) : 0;
+        stage.setLayoutParams(stageParams);
         suggestions.resize();
         fullscreen.setContentDescription(
                 getString(full ? R.string.mobile_exit_fullscreen : R.string.mobile_fullscreen));

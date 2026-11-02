@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.WindowManager;
 import com.bumptech.glide.Glide;
 import com.liskovsoft.smartyoutubetv2.tv.R;
+import com.liskovsoft.smartyoutubetv2.tv.ui.mod.clickable.LinkifyCompat;
 import android.widget.*;
 
 import com.liskovsoft.mediaserviceinterfaces.data.*;
@@ -26,6 +27,12 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private LinearLayout commentPanel;
     private View commentHandle;
     private static PopupRequest pendingPopup;
+    private static String pendingDescriptionTitle;
+    private boolean restoreDescription;
+
+    static void requestDescription(String title) {
+        pendingDescriptionTitle = title;
+    }
     private android.graphics.Rect popupAnchor;
 
     private static final class PopupRequest {
@@ -57,15 +64,16 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private static final class Page {
         final List<OptionCategory> categories;
         final CharSequence title;
-        final boolean transparent, overlay;
+        final boolean transparent, overlay, description;
         final int id;
 
-        Page(List<OptionCategory> c, CharSequence t, boolean transparent, boolean overlay, int id) {
+        Page(List<OptionCategory> c, CharSequence t, boolean transparent, boolean overlay, int id, boolean description) {
             categories = c;
             title = t;
             this.transparent = transparent;
             this.overlay = overlay;
             this.id = id;
+            this.description = description;
         }
     }
 
@@ -93,10 +101,17 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         return false;
     }
 
+    private boolean isPlayerSheet() {
+        return hasComments() || page != null && page.description;
+    }
+
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
-        if (state != null) popupAnchor = state.getParcelable("popup_anchor");
+        if (state != null) {
+            popupAnchor = state.getParcelable("popup_anchor");
+            restoreDescription = state.getBoolean("description_sheet");
+        }
         root = MobileUi.column(this);
         setContentView(root);
         presenter = AppDialogPresenter.instance(this);
@@ -126,6 +141,14 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                 }
             }
         }
+        // Only a description requested by the mobile player uses the player sheet.
+        // Other long-text dialogs retain their normal presentation.
+        boolean description = (restoreDescription || pendingDescriptionTitle != null
+                && Objects.equals(pendingDescriptionTitle, title == null ? null : title.toString()))
+                && categories != null && categories.stream().anyMatch(c -> c.type == OptionCategory.TYPE_LONG_TEXT);
+        pendingDescriptionTitle = null;
+        restoreDescription = false;
+        if (description) popupAnchor = null;
         if (page != null) backstack.push(page);
         detachReceivers();
         page =
@@ -134,14 +157,14 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                         title,
                         transparent,
                         overlay,
-                        id);
+                        id, description);
         render();
     }
 
     private void render() {
         optionButtons.clear();
         root.removeAllViews();
-        boolean commentSheet = hasComments();
+        boolean commentSheet = isPlayerSheet();
         boolean ordinaryMenu = !commentSheet && popupAnchor == null
                 && page.categories.stream().noneMatch(category -> category.type == OptionCategory.TYPE_CHAT);
         commentPanel = null;
@@ -171,12 +194,12 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
             updateCommentPanel();
             LinearLayout header = new LinearLayout(this);
             header.setGravity(Gravity.CENTER_VERTICAL);
-            TextView heading = MobileUi.text(this, getString(R.string.mobile_watch_comments), 20);
+            TextView heading = MobileUi.text(this, getString(page.description ? R.string.mobile_description_title : R.string.mobile_watch_comments), 20);
             heading.setTypeface(null, android.graphics.Typeface.BOLD);
             header.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
             Button close = MobileUi.button(this, "", this::onBackPressed);
             MobileUi.centerIcon(close, "close", 24);
-            close.setContentDescription(getString(R.string.mobile_comments_close));
+            close.setContentDescription(getString(page.description ? R.string.mobile_description_close : R.string.mobile_comments_close));
             close.setBackgroundColor(Color.TRANSPARENT);
             header.addView(close, new LinearLayout.LayoutParams(MobileUi.dp(this, 48), MobileUi.dp(this, 48)));
             panel.addView(header);
@@ -270,6 +293,20 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
                         TextView text = MobileUi.text(this, item.getTitle(), 16);
                         text.setTextIsSelectable(true);
                         text.setMovementMethod(LinkMovementMethod.getInstance());
+                        if (page.description) {
+                            LinkifyCompat.addLinks(text, LinkifyCompat.WEB_URLS | LinkifyCompat.TIME_CODES,
+                                    new LinkifyCompat.LinkifyClickHandler() {
+                                        @Override public void onUrlClick(String link) {
+                                            com.liskovsoft.smartyoutubetv2.common.utils.Utils.openUrlInternally(
+                                                    MobileDialogActivity.this, android.net.Uri.parse(link));
+                                        }
+
+                                        @Override public void onTimeClick(String timeCode) {
+                                            com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter
+                                                    .instance(MobileDialogActivity.this).setPosition(timeCode);
+                                        }
+                                    });
+                        }
                         body.addView(text);
                     } else if (category.type == OptionCategory.TYPE_COMMENTS
                             && item.getCommentsReceiver() != null)
@@ -358,7 +395,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
 
     @Override
     public boolean onTouchEvent(android.view.MotionEvent event) {
-        if (hasComments() && event.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) return true;
+        if (isPlayerSheet() && event.getActionMasked() == android.view.MotionEvent.ACTION_OUTSIDE) return true;
         return super.onTouchEvent(event);
     }
 
@@ -390,7 +427,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
         if (page != null) {
-            updateWindow(hasComments());
+            updateWindow(isPlayerSheet());
             updateCommentPanel();
         }
     }
@@ -667,13 +704,13 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
 
     @Override
     public boolean isTransparent() {
-        return page != null && (page.transparent || hasComments() || popupAnchor != null);
+        return page != null && (page.transparent || isPlayerSheet() || popupAnchor != null);
     }
 
     @Override
     public boolean isOverlay() {
         // The portrait player is already above the sheet; TV dialog fitting would shrink it.
-        return page != null && (page.overlay || hasComments() || popupAnchor != null);
+        return page != null && (page.overlay || isPlayerSheet() || popupAnchor != null);
     }
 
     @Override
@@ -697,19 +734,19 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         paused = true;
         // Fullscreen can temporarily pause this window while the watch Activity rotates.
         // Watch navigation, video replacement and explicit dismissal own comment closure.
-        if (page != null && !hasComments() && popupAnchor != null && !isChangingConfigurations()) finish();
+        if (page != null && !isPlayerSheet() && popupAnchor != null && !isChangingConfigurations()) finish();
         super.onPause();
     }
 
     static void dismissComments(android.content.Context context) {
         AppDialogView dialog = AppDialogPresenter.instance(context).getView();
-        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).hasComments())
+        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).isPlayerSheet())
             dialog.finish();
     }
 
     static void updateCommentsLayout(android.content.Context context) {
         AppDialogView dialog = AppDialogPresenter.instance(context).getView();
-        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).hasComments()
+        if (dialog instanceof MobileDialogActivity && ((MobileDialogActivity) dialog).isPlayerSheet()
                 && !((MobileDialogActivity) dialog).closing) {
             MobileDialogActivity sheet = (MobileDialogActivity) dialog;
             sheet.updateWindow(true);
@@ -720,6 +757,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     @Override
     protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
+        state.putBoolean("description_sheet", page != null && page.description);
         if (popupAnchor != null) state.putParcelable("popup_anchor", popupAnchor);
     }
 

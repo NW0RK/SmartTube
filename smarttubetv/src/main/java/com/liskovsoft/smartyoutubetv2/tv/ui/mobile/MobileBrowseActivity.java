@@ -20,12 +20,11 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     private BrowsePresenter presenter;
     private MobileNavigationShell navigationShell;
     private MobileFeedView feed;
-    private LinearLayout chips, content, settings;
+    private LinearLayout content, settings;
     private final Map<Integer, Button> tabs = new HashMap<>();
     private Parcelable pendingScroll;
     private int selected = -1;
     private boolean you;
-    private HorizontalScrollView sectionStrip;
     private Button youTab;
     private int requestedDestination = -1;
     private ScrollView youScroller;
@@ -36,13 +35,6 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         presenter = BrowsePresenter.instance(this);
         presenter.setView(this);
         LinearLayout root = MobileUi.column(this);
-        HorizontalScrollView strip = new HorizontalScrollView(this);
-        sectionStrip = strip;
-        chips = new LinearLayout(this);
-        strip.setHorizontalScrollBarEnabled(false);
-        chips.setPaddingRelative(MobileUi.dp(this, 12), MobileUi.dp(this, 4), MobileUi.dp(this, 12), MobileUi.dp(this, 8));
-        strip.addView(chips);
-        root.addView(strip);
         content = MobileUi.column(this);
         root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         feed =
@@ -115,10 +107,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         MobileUi.addNavigation(row, button);
     }
 
-    private void rebuildChips() {
-        if (chips == null) return;
-        chips.removeAllViews();
-        sectionStrip.setVisibility(you ? android.view.View.GONE : android.view.View.VISIBLE);
+    private void updateNavigation() {
         if (youTab != null) MobileUi.navigationState(youTab, you);
         for (Map.Entry<Integer, Button> entry : tabs.entrySet()) {
             boolean enabled =
@@ -127,54 +116,13 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
             entry.getValue().setAlpha(enabled ? 1f : 0.4f);
             MobileUi.navigationState(entry.getValue(), enabled && !you && selected == entry.getKey());
         }
-        List<BrowseSection> topSections = new ArrayList<>(sections);
-        topSections.removeIf(s -> !s.isEnabled() || topSectionRank(s.getId()) < 0);
-        topSections.sort(Comparator.comparingInt(s -> topSectionRank(s.getId())));
-        for (BrowseSection s : topSections) {
-            Button button =
-                    MobileUi.browseButton(
-                            this,
-                            s.getTitle(),
-                            () -> {
-                                you = false;
-                                presenter.selectSection(s.getId());
-                            });
-            button.setSelected(!you && selected == s.getId());
-            button.setOnLongClickListener(
-                    v -> {
-                        presenter.onSectionLongPressed(s.getId());
-                        return true;
-                    });
-            MobileUi.addBrowseButton(chips, button);
-            if (button.isSelected()) button.post(() -> {
-                if (button.getParent() == chips && button.isSelected())
-                    button.requestRectangleOnScreen(new android.graphics.Rect(0, 0, button.getWidth(), button.getHeight()), true);
-            });
-        }
-    }
-
-    private static int topSectionRank(int id) {
-        switch (id) {
-            case MediaGroup.TYPE_HOME: return 0;
-            case MediaGroup.TYPE_MUSIC: return 1;
-            case MediaGroup.TYPE_SUBSCRIPTIONS: return 2;
-            case MediaGroup.TYPE_USER_PLAYLISTS: return 3;
-            case MediaGroup.TYPE_SHORTS:
-            case MediaGroup.TYPE_KIDS_HOME:
-            case MediaGroup.TYPE_SPORTS:
-            case MediaGroup.TYPE_LIVE:
-            case MediaGroup.TYPE_GAMING:
-            case MediaGroup.TYPE_NEWS:
-            case MediaGroup.TYPE_CHANNEL_UPLOADS: return -1;
-            default: return 4;
-        }
     }
 
     private void showYou() {
         if (navigationShell != null) navigationShell.revealNavigation();
         rememberScroll();
         you = true;
-        rebuildChips();
+        updateNavigation();
         content.removeAllViews();
         ScrollView view = new ScrollView(this);
         youScroller = view;
@@ -206,22 +154,22 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     public void addSection(int index, BrowseSection s) {
         removeSection(s);
         sections.add(index >= 0 && index <= sections.size() ? index : sections.size(), s);
-        rebuildChips();
+        updateNavigation();
         refreshYou();
-        chips.post(this::applyDestination);
+        content.post(this::applyDestination);
     }
 
     @Override
     public void removeSection(BrowseSection s) {
         if (s != null) sections.removeIf(x -> x.getId() == s.getId());
-        rebuildChips();
+        updateNavigation();
         refreshYou();
     }
 
     @Override
     public void removeAllSections() {
         sections.clear();
-        rebuildChips();
+        updateNavigation();
         refreshYou();
     }
 
@@ -243,6 +191,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         boolean changed = selected != s.getId();
         if (navigationShell != null && (changed || focus)) navigationShell.revealNavigation();
         selected = s.getId();
+        feed.setPaginationIndicatorVisible(selected != MediaGroup.TYPE_HOME);
         feed.setEmptyText(getString(selected == MediaGroup.TYPE_SUBSCRIPTIONS
                 ? R.string.mobile_subscriptions_empty : selected == MediaGroup.TYPE_HOME
                 ? R.string.mobile_home_empty : R.string.mobile_empty));
@@ -251,7 +200,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         content.addView(feed, new LinearLayout.LayoutParams(-1, -1));
         if (changed) feed.clear();
         if (changed) MobileMotion.enter(feed);
-        rebuildChips();
+        updateNavigation();
         presenter.onSectionFocused(selected);
         Parcelable position = scroll.get(selected);
         pendingScroll = position;

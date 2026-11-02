@@ -133,6 +133,41 @@ public class MobileVideoInteractionsTest {
         host.destroy();
     }
 
+    @Test public void descriptionUsesPlayerSheetAndOtherLongTextRemainsModal() {
+        TestPlayer player = new TestPlayer();
+        org.robolectric.android.controller.ActivityController<FragmentActivity> host = host(player);
+        player.setVideo(Video.from("first"));
+        com.liskovsoft.smartyoutubetv2.common.app.presenters.PlaybackPresenter.instance(host.get()).setView(player);
+        org.robolectric.android.controller.ActivityController<MobileDialogActivity> dialog =
+                Robolectric.buildActivity(MobileDialogActivity.class).create();
+        MobileDialogActivity sheet = dialog.get();
+        OptionCategory description = OptionCategory.from(1, OptionCategory.TYPE_LONG_TEXT,
+                "Video title", Collections.singletonList(UiOptionItem.from("Description https://example.com at 1:23")));
+        MobileDialogActivity.requestDescription("Video title");
+        sheet.show(Collections.singletonList(description), "Video title", false, false, false, 1);
+        player.videoBottom = 268;
+        MobileDialogActivity.updateCommentsLayout(sheet);
+        assertEquals(532, sheet.getWindow().getAttributes().height);
+        assertTrue(sheet.isOverlay());
+        assertTrue(sheet.isTransparent());
+        RuntimeEnvironment.setQualifiers("w800dp-h360dp-land-mdpi");
+        sheet.onConfigurationChanged(sheet.getResources().getConfiguration());
+        assertTrue(player.panelWidth > 0);
+        ScrollView scroll = ReflectionHelpers.getField(sheet, "scroller");
+        sheet.show(Collections.singletonList(description), "Unrelated text", false, false, false, 2);
+        assertEquals(0, player.panelWidth);
+        assertEquals(WindowManager.LayoutParams.MATCH_PARENT, sheet.getWindow().getAttributes().height);
+        assertFalse(sheet.isOverlay());
+        sheet.onBackPressed();
+        assertTrue(sheet.isOverlay());
+        assertTrue(player.panelWidth > 0);
+        MobileDialogActivity.dismissComments(sheet);
+        assertTrue(sheet.isFinishing());
+        assertEquals(0, player.panelWidth);
+        dialog.destroy();
+        host.destroy();
+    }
+
     @Test public void commentsPreserveScrollAndResizePlayerAcrossFullscreenThenCloseOnVideoChange() {
         TestPlayer player = new TestPlayer();
         org.robolectric.android.controller.ActivityController<FragmentActivity> host = host(player);

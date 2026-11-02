@@ -19,6 +19,7 @@ public final class MobileFeedView extends LinearLayout {
     private Runnable retryAction;
     private final LinearLayout status;
     private boolean busy, completed, failed;
+    private boolean paginationIndicatorVisible = true;
     private String emptyText;
 
     public MobileFeedView(
@@ -137,6 +138,11 @@ public final class MobileFeedView extends LinearLayout {
         clear();
     }
 
+    public void setPaginationIndicatorVisible(boolean visible) {
+        paginationIndicatorVisible = visible;
+        render();
+    }
+
     public boolean loading() {
         return busy;
     }
@@ -167,14 +173,15 @@ public final class MobileFeedView extends LinearLayout {
 
     private void render() {
         boolean empty = adapter.isEmpty();
-        boolean visible = busy || failed || empty && completed;
+        boolean visible = busy && (adapter.getItemCount() == 0 || paginationIndicatorVisible)
+                || failed || empty && completed;
         // Keep header-bearing feeds (watch details and channel banners) visible.
         boolean hasRows = adapter.getItemCount() > 0;
         list.setVisibility(hasRows ? VISIBLE : GONE);
         status.setVisibility(visible ? VISIBLE : GONE);
         status.setLayoutParams(new LayoutParams(-1, hasRows ? -2 : 0, hasRows ? 0 : 1));
         skeleton.setVisibility(busy && !hasRows ? VISIBLE : GONE);
-        progress.setVisibility(busy && hasRows ? VISIBLE : GONE);
+        progress.setVisibility(busy && hasRows && paginationIndicatorVisible ? VISIBLE : GONE);
         message.setVisibility(!busy && (failed || empty && completed) ? VISIBLE : GONE);
         if (!failed) message.setText(emptyText);
         if (!failed) retry.setVisibility(GONE);

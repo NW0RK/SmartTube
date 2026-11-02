@@ -1,3 +1,9 @@
+## Stable 32.72 update
+
+Removed the top section strip; its destinations remain under You. Home recommendations continue loading silently. Portrait video has an 8dp top gap, player overlay buttons are transparent, and descriptions use the comments-style sheet while keeping the video usable.
+
+Seven focused UI regression tests passed against the completed UI build, covering navigation destinations, silent pagination, button state drawables, description geometry/links, and phone/tablet layouts. Broader tests retain unrelated playback-fixture failures and an obsolete service-test API. Emulator/device checks were skipped at the user's request. Release 32.72 changes only version metadata from that tested UI build and uses Java 11, isolated dependencies, and the existing stable signing key.
+
 ## Stable 32.71 update
 
 Removed the browse branding toolbar and moved Search into the icon-only, OLED black bottom navigation. Navigation now slides with 220ms ease-in/ease-out motion. Returning from comment replies restores the parent comment scroll position. No tests, lint, emulator checks, or device checks were run for this release, as requested.

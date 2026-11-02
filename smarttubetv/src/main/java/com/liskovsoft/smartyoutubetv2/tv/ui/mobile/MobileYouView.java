@@ -75,7 +75,6 @@ final class MobileYouView extends LinearLayout {
         for (BrowseSection s : sections)
             if (s.isEnabled() && s.getId() != MediaGroup.TYPE_HOME
                     && s.getId() != MediaGroup.TYPE_SHORTS
-                    && s.getId() != MediaGroup.TYPE_SUBSCRIPTIONS
                     && s.getId() != MediaGroup.TYPE_HISTORY
                     && s.getId() != MediaGroup.TYPE_USER_PLAYLISTS) {
                 if (s.getId() == MediaGroup.TYPE_SETTINGS) MobileUi.menuDivider(items);

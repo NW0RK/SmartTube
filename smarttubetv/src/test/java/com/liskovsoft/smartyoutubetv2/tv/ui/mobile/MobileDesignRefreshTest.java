@@ -16,6 +16,49 @@ import org.robolectric.annotation.Config;
 @Config(application=Application.class, sdk=28)
 public class MobileDesignRefreshTest {
     private Context context() { return new ContextThemeWrapper(RuntimeEnvironment.getApplication(), R.style.MobileTheme); }
+    @Test public void playerButtonsAreTransparentAtRestAndKeepTouchFeedback() {
+        Button button = MobileUi.button(context(), "CC", () -> {});
+        MobileUi.playerFeedback(button);
+        android.graphics.drawable.StateListDrawable states =
+                (android.graphics.drawable.StateListDrawable) button.getBackground();
+        org.robolectric.shadows.ShadowStateListDrawable shadow = org.robolectric.Shadows.shadowOf(states);
+        for (boolean selected : new boolean[]{false, true}) {
+            int[] resting = selected ? new int[]{android.R.attr.state_selected} : new int[]{};
+            int[] pressedState = selected
+                    ? new int[]{android.R.attr.state_selected, android.R.attr.state_pressed}
+                    : new int[]{android.R.attr.state_pressed};
+            android.graphics.drawable.GradientDrawable normal =
+                    (android.graphics.drawable.GradientDrawable) shadow.getDrawableForState(resting);
+            assertEquals(android.graphics.Color.TRANSPARENT,
+                    org.robolectric.Shadows.shadowOf(normal).getLastSetColor());
+            android.graphics.drawable.GradientDrawable pressed =
+                    (android.graphics.drawable.GradientDrawable) shadow.getDrawableForState(pressedState);
+            assertNotEquals(android.graphics.Color.TRANSPARENT,
+                    org.robolectric.Shadows.shadowOf(pressed).getLastSetColor());
+        }
+    }
+
+    @Test public void silentPaginationKeepsBusyStateAndRowsWithoutStatusSpace() {
+        MobileFeedView feed = new MobileFeedView(context(), v -> {}, v -> {}, v -> {});
+        feed.setPaginationIndicatorVisible(false);
+        LinearLayout status = (LinearLayout) feed.getChildAt(1);
+        feed.loading(true);
+        assertEquals(View.VISIBLE, status.getChildAt(3).getVisibility());
+        Video video = new Video(); video.videoId = "loaded";
+        feed.update(VideoGroup.from(Collections.singletonList(video)));
+        assertTrue(feed.loading());
+        assertEquals(View.VISIBLE, feed.list.getVisibility());
+        assertEquals(View.GONE, status.getVisibility());
+        assertEquals(View.GONE, status.getChildAt(0).getVisibility());
+        feed.error("Offline", null, () -> {});
+        assertEquals(View.VISIBLE, status.getVisibility());
+        assertEquals(View.VISIBLE, status.getChildAt(2).getVisibility());
+        assertEquals(1, feed.adapter.getItemCount());
+        feed.loading(true);
+        feed.setPaginationIndicatorVisible(true);
+        assertEquals(View.VISIBLE, status.getChildAt(0).getVisibility());
+    }
+
     @Test public void initialLoadingUsesPlaceholderAndPaginationRetainsVideos() {
         MobileFeedView feed = new MobileFeedView(context(), v -> {}, v -> {}, v -> {});
         LinearLayout status = (LinearLayout) feed.getChildAt(1);

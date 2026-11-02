@@ -11,6 +11,8 @@
     <string name="mobile_comments_like">Like comment</string>
     <string name="mobile_comments_unlike">Unlike comment</string>
     <string name="mobile_comments_more">Load more comments</string>
+    <string name="mobile_description_title">Description</string>
+    <string name="mobile_description_close">Close description</string>
     <string name="mobile_watch_description">Show description</string>
     <string name="mobile_watch_rewind">Rewind 10 seconds</string>
     <string name="mobile_watch_forward">Forward 10 seconds</string>

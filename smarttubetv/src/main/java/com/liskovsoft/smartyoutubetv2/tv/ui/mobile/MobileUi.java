@@ -230,8 +230,8 @@ final class MobileUi {
     static void playerFeedback(Button button) {
         Context c = button.getContext();
         button.setBackgroundTintList(null);
-        button.setBackground(shapeStates(c, c.getColor(R.color.mobile_surface),
-                c.getColor(R.color.mobile_surface_raised), true, 28));
+        button.setBackground(shapeStates(c, Color.TRANSPARENT,
+                Color.TRANSPARENT, true, 28));
         button.setStateListAnimator(null);
         button.setElevation(0);
     }
