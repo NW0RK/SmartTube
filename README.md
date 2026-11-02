@@ -18,7 +18,7 @@ Existing beta users install this stable package separately. Older stable install
 
 ## Features
 
-- Touch-friendly Home, Subscriptions, and You navigation, with search, channels, and account switching.
+- Touch-friendly Home, History, and You navigation, with search, channels, and account switching.
 - Portrait watch pages, fullscreen landscape playback, comments, replies, and recommendations.
 - Timeline seeking with thumbnail previews, double-tap seeking, captions, quality selection, and playback speed controls.
 - SponsorBlock integration, picture-in-picture, and service-owned background audio while browsing or leaving the app.
@@ -48,10 +48,10 @@ git clone --recurse-submodules https://github.com/NW0RK/SmartTube.git
 cd SmartTube
 ```
 
-Use Java 11 and an Android SDK, then build the beta debug APK:
+Use Java 11 and an Android SDK, then build the stable release APK:
 
 ```sh
-./gradlew :smarttubetv:assembleStbetaDebug
+./gradlew :smarttubetv:assembleStstableRelease
 ```
 
 Build configuration checks the public upstream revisions in
@@ -59,12 +59,14 @@ Build configuration checks the public upstream revisions in
 patches. Repeated builds preserve an already-patched dependency tree. See
 [dependency setup](patches/README.md) for the pins and isolated-checkout options.
 
-On Windows, use `gradlew.bat`. APKs are written to `smarttubetv/build/outputs/apk/stbeta/debug/`.
+Release signing is configured through `keystore.properties` or the stable release workflow. Keep signing credentials outside version control.
+
+On Windows, use `gradlew.bat`. APKs are written to `smarttubetv/build/outputs/apk/ststable/release/`.
 
 Run the mobile regression tests with:
 
 ```sh
-./gradlew :smarttubetv:testStbetaDebugUnitTest
+./gradlew :smarttubetv:testStstableDebugUnitTest
 ```
 
 ## Credits and license

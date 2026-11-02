@@ -11,6 +11,7 @@ on:
 
 jobs:
   virustotal_scan:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.release.body, '<!-- skip-checks -->')
     permissions:
       contents: write
     runs-on: ubuntu-latest

@@ -1,5 +1,14 @@
 # Phone frontend
 
+## Stable design refresh — November 2, 2026
+
+NikoTube 32.70 / 2460 refreshes the dark mobile interface, adds Home/History/You navigation that hides on downward user scrolling and returns upward, and uses whole-shape button feedback. Subscriptions remains in the section chips. DESIGN.md, .impeccable/design.json, and AGENTS.md record the shared system and stable-only delivery preference.
+
+Intermediate verification ran 77 tests: 73 passed and four failed because playback fixtures still assume fragment-owned playback. The obsolete MobilePlaybackServiceTest did not compile against the current service and was excluded in a temporary build-only configuration; its two tests were not run. Lint reported 0 errors and 313 warnings, with some dependency detectors incompatible with Java 11. Earlier Galaxy A52 captures covered browsing, search suggestions/IME, playing video, share, comments, and landscape playback at the original 150% text setting; 100%, 200%, and a 320dp configuration were also inspected, and display settings were restored. These checks predate the final navigation and whole-shape feedback changes.
+
+At the user's explicit request, further testing and device interaction stopped. The final 32.70 build is release-only; its final behavior has not received another test or device pass. See [release notes](release-32.70.md).
+
+
 ## Redesign and stable-update implementation — November 2, 2026
 
 The mobile interface uses opaque dark surfaces, a full-width labeled bottom bar,

@@ -30,7 +30,8 @@ final class MobileChannelHeader {
             header.addView(avatar, params);
             Glide.with(avatar).load(channel.cardImageUrl).circleCrop().into(avatar);
         }
-        TextView title = MobileUi.text(c, name(c, channel, id), 28);
+        TextView title = MobileUi.text(c, name(c, channel, id), 24);
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, c.getResources().getDimension(R.dimen.mobile_heading_size));
         title.setTypeface(null, Typeface.BOLD);
         header.addView(title);
         if (id != null && id.startsWith("@") && !id.contentEquals(title.getText()))

@@ -29,7 +29,7 @@ import java.util.*;
 
 public class MobilePlaybackFragment extends MobilePlayerEngine {
     private String shownVideoId;
-    private LinearLayout root, details, bar, chatList;
+    private LinearLayout root, details, chatList;
     private FrameLayout controls;
     private ChatReceiver chatReceiver;
     private FrameLayout stage, debug;
@@ -216,23 +216,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle state) {
         root = MobileUi.column(requireContext());
         root.setBackgroundColor(MobileUi.background(requireContext()));
-        bar =
-                MobileUi.watchToolbar(requireContext());
-        root.addView(bar);
-        TextView brand = bar.findViewById(R.id.mobile_toolbar_title);
-        brand.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        brand.setTypeface(null, android.graphics.Typeface.BOLD);
-        MobileUi.addButton(bar, iconButton("search", "Search", () -> action(R.id.action_search)));
-        MobileUi.addSeparator(bar);
-        MobileUi.addButton(bar, iconButton("more", "Playback options", this::playbackOptions));
         stage = (FrameLayout) inflater.inflate(R.layout.mobile_player_stage, parent, false);
-        stage.setOutlineProvider(new ViewOutlineProvider() {
-            @Override public void getOutline(View view, android.graphics.Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
-                        MobileUi.dp(view.getContext(), 20));
-            }
-        });
-        stage.setClipToOutline(true);
         surface = stage.findViewById(R.id.mobile_player_surface);
         surface.setUseController(false);
         poster = new ImageView(requireContext());
@@ -345,6 +329,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         details = MobileUi.column(requireContext());
         details.setBackgroundColor(MobileUi.background(requireContext()));
         title = MobileUi.text(requireContext(), "", 18);
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, getResources().getDimension(R.dimen.mobile_watch_title_size));
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout information = MobileUi.column(requireContext());
         information.setBackgroundColor(Color.TRANSPARENT);
@@ -379,7 +364,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         avatar.setOnClickListener(v -> action(R.id.action_channel));
         Button subscribe = actionButton(channel, R.id.action_subscribe, "Subscribe");
         MobileUi.subscriptionFeedback(subscribe);
-        subscribe.setTextColor(Color.WHITE);
+
         LinearLayout.LayoutParams channelParams = new LinearLayout.LayoutParams(-1, -2);
         channelParams.setMargins(MobileUi.dp(requireContext(), 16), 0, MobileUi.dp(requireContext(), 16), MobileUi.dp(requireContext(), 8));
         details.addView(channel, channelParams);
@@ -422,7 +407,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         chapters.setBackgroundColor(Color.TRANSPARENT);
         chapters.setVisibility(View.GONE);
         details.addView(chapters);
-        Button comments = actionButton(details, R.id.action_chat, getString(R.string.mobile_watch_comments) + "  ›");
+        Button comments = actionButton(details, R.id.action_chat, getString(R.string.mobile_watch_comments));
         comments.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         MobileUi.browseFeedback(comments, false);
         LinearLayout.LayoutParams commentCard = new LinearLayout.LayoutParams(-1, MobileUi.dp(requireContext(), 52));
@@ -663,8 +648,13 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
 
     private void playbackOptions() {
         AppDialogPresenter dialog = AppDialogPresenter.instance(requireContext());
+        dialog.appendSingleButton(UiOptionItem.from(getString(R.string.action_search), item -> {
+            dialog.closeDialog();
+            action(R.id.action_search);
+        }));
         for (Action a : actions.values()) {
             int id = (int) a.getId();
+            if (id == R.id.action_search) continue;
             dialog.appendSingleButton(
                     UiOptionItem.from(
                             a.getLabel1() == null ? "Playback" : a.getLabel1(),
@@ -745,7 +735,7 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
         // Leave the enlarged timeline touch area clear on short portrait video frames.
         play.setTranslationY(root.getWidth() * 9 / 16 < MobileUi.dp(requireContext(), 260) && !full
                 ? -MobileUi.dp(requireContext(), 24) : 0);
-        bar.setVisibility(full ? View.GONE : View.VISIBLE);
+
         suggestions.setVisibility(full ? View.GONE : View.VISIBLE);
         stage.setLayoutParams(
                 new LinearLayout.LayoutParams(
@@ -1085,14 +1075,14 @@ public class MobilePlaybackFragment extends MobilePlayerEngine {
             } else if (id == R.id.action_thumbs_up) {
                 updateLikeButton();
             } else if (id == R.id.action_chat) {
-                b.setText(getString(R.string.mobile_watch_comments) + "  ›");
+                b.setText(getString(R.string.mobile_watch_comments));
             } else if (id == R.id.action_subscribe) {
                 b.setText(getString(state == BUTTON_ON ? R.string.subscribed_to_channel : R.string.action_subscribe));
             } else if (a != null && a.getLabel1() != null && id != R.id.action_channel)
                 b.setText(a.getLabel1());
             b.setSelected(state == BUTTON_ON);
             int color = state == BUTTON_ON && id != R.id.action_subscribe ? MobileUi.accent(requireContext()) : Color.WHITE;
-            b.setTextColor(color);
+            if (id != R.id.action_subscribe) b.setTextColor(color);
             for (android.graphics.drawable.Drawable icon : b.getCompoundDrawables())
                 if (icon != null) icon.setTint(color);
             if (b.getForeground() != null)

@@ -112,7 +112,7 @@ public class MobileRecommendationTest {
         assertTrue(card.image.getWidth() >= 250);
         assertEquals(card.image.getWidth() * 9 / 16, card.image.getHeight());
         assertTrue(card.menu.getWidth() >= 48);
-        assertEquals(card.image.getParent().getParent(), card.menu.getParent());
+        assertNotSame(card.image.getParent().getParent(), card.menu.getParent());
         android.graphics.Rect thumbnail = new android.graphics.Rect(), title = new android.graphics.Rect();
         card.image.getDrawingRect(thumbnail);
         card.title.getDrawingRect(title);
@@ -120,7 +120,8 @@ public class MobileRecommendationTest {
         ((ViewGroup) card.itemView).offsetDescendantRectToMyCoords(card.title, title);
         assertTrue(title.top >= thumbnail.bottom);
         assertEquals(thumbnail.left, title.left);
-        assertEquals(thumbnail.right, title.right);
+        assertTrue(title.right < thumbnail.right);
+        assertEquals(2, card.title.getMaxLines());
         assertTrue(card.meta.getTop() >= card.title.getBottom());
         host.destroy();
     }

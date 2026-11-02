@@ -167,10 +167,8 @@ public final class MobileFeedAdapter extends RecyclerView.Adapter<RecyclerView.V
                 LayoutInflater.from(parent.getContext())
                         .inflate(compactCards ? R.layout.mobile_watch_video_card : R.layout.mobile_video_card, parent, false));
         card.image.setClipToOutline(true);
-        if (compactCards) {
-            MobileUi.pillTouchFeedback(card.itemView);
-            MobileUi.pillTouchFeedback(card.menu);
-        }
+        MobileUi.moreIcon((Button) card.menu);
+        MobileUi.pillTouchFeedback(card.itemView);
         return card;
     }
 

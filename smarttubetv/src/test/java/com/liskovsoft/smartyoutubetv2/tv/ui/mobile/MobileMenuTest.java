@@ -179,8 +179,12 @@ public class MobileMenuTest {
         activity.addSection(0, section(MediaGroup.TYPE_USER_PLAYLISTS, "Playlists"));
         activity.selectSection(0, false);
         View root = activity.getWindow().getDecorView();
-        assertNotNull(text(root, "Playlists"));
-        assertNull(text(root, "History"));
+        View content = org.robolectric.util.ReflectionHelpers.getField(activity, "content");
+        assertNotNull(text(content, "Playlists"));
+        assertNull(text(content, "History"));
+        // History remains a labeled navigation destination, disabled when unavailable.
+        assertNotNull(text(root, "History"));
+        assertFalse(text(root, "History").isEnabled());
         assertTrue(org.robolectric.util.ReflectionHelpers.<Boolean>getField(activity, "you"));
         controller.destroy();
     }

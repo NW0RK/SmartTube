@@ -505,9 +505,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
     private void appendLoadMore(CommentsReceiver receiver, CommentGroup group) {
         Button more = MobileUi.button(this, getString(R.string.mobile_comments_more), () -> {});
         more.setTextColor(Color.WHITE);
-        more.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(getColor(R.color.mobile_feedback)),
-                MobileUi.pillSurface(this), null));
+        MobileUi.browseFeedback(more, false);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, MobileUi.dp(this, 48));
         params.setMargins(MobileUi.dp(this, 16), MobileUi.dp(this, 8), MobileUi.dp(this, 16), 0);
         body.addView(more, params);
@@ -576,9 +574,7 @@ public class MobileDialogActivity extends MobileActivity implements AppDialogVie
         content.addView(actions);
         Button like = MobileUi.button(this, "", () -> receiver.onCommentLongClicked(commentItems.get(item.getId())));
         updateCommentLike(like, item);
-        like.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(getColor(R.color.mobile_feedback)),
-                MobileUi.rounded(this, Color.TRANSPARENT), null));
+        MobileUi.pillTouchFeedback(like);
         actions.addView(like, new LinearLayout.LayoutParams(-2, MobileUi.dp(this, 48)));
         if (item.getNestedCommentsKey() != null && item.getReplyCount() != null) {
             Button replies = MobileUi.button(this, item.getReplyCount() + "  ›",

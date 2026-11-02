@@ -18,6 +18,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     private final List<BrowseSection> sections = new ArrayList<>();
     private final Map<Integer, Parcelable> scroll = new HashMap<>();
     private BrowsePresenter presenter;
+    private MobileNavigationShell navigationShell;
     private MobileFeedView feed;
     private LinearLayout chips, content, settings;
     private final Map<Integer, Button> tabs = new HashMap<>();
@@ -35,6 +36,9 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         presenter = BrowsePresenter.instance(this);
         presenter.setView(this);
         LinearLayout root = MobileUi.column(this), top = MobileUi.toolbar(this, getString(R.string.mobile_brand_name), null);
+        TextView brandTitle = top.findViewById(R.id.mobile_toolbar_title);
+        brandTitle.setSingleLine(true);
+        brandTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
         ImageView brand = new ImageView(this);
         brand.setImageResource(R.drawable.mobile_top_left);
         brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -78,12 +82,13 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         tab(tabs, getString(R.string.header_home), MediaGroup.TYPE_HOME, R.drawable.icon_home);
         tab(
                 tabs,
-                getString(R.string.header_subscriptions),
-                MediaGroup.TYPE_SUBSCRIPTIONS,
-                R.drawable.icon_subscriptions);
+                getString(R.string.header_history),
+                MediaGroup.TYPE_HISTORY,
+                R.drawable.mobile_history);
         youTab = MobileUi.browseNavigation(this, R.drawable.ic_user, getString(R.string.mobile_you), this::showYou);
         MobileUi.addNavigation(tabs, youTab);
-        setContentView(new MobileNavigationShell(this, root, tabs));
+        navigationShell = new MobileNavigationShell(this, root, tabs);
+        setContentView(navigationShell);
         requestedDestination = MobileNavigationShell.requestedDestination(state, getIntent());
         presenter.onViewInitialized();
         if (state != null) {
@@ -188,6 +193,7 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
     }
 
     private void showYou() {
+        if (navigationShell != null) navigationShell.revealNavigation();
         rememberScroll();
         you = true;
         rebuildChips();
@@ -257,7 +263,11 @@ public class MobileBrowseActivity extends MobileActivity implements BrowseView {
         }
         rememberScroll();
         boolean changed = selected != s.getId();
+        if (navigationShell != null && (changed || focus)) navigationShell.revealNavigation();
         selected = s.getId();
+        feed.setEmptyText(getString(selected == MediaGroup.TYPE_SUBSCRIPTIONS
+                ? R.string.mobile_subscriptions_empty : selected == MediaGroup.TYPE_HOME
+                ? R.string.mobile_home_empty : R.string.mobile_empty));
         you = false;
         content.removeAllViews();
         content.addView(feed, new LinearLayout.LayoutParams(-1, -1));

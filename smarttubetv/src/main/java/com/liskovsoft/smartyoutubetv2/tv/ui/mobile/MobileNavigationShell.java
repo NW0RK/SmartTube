@@ -32,7 +32,8 @@ final class MobileNavigationShell extends FrameLayout {
     private final LinearLayout navigation;
     private final int contentBottom;
     private final java.util.Map<View, Integer> scrollPadding = new java.util.WeakHashMap<>();
-    private boolean keyboard;
+    private boolean keyboard, scrollHidden;
+    private final java.util.Set<View> observedScrollers = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
 
     MobileNavigationShell(Context c, View content, LinearLayout navigation) {
         super(c);
@@ -76,9 +77,10 @@ final class MobileNavigationShell extends FrameLayout {
     }
 
     @Override protected void onMeasure(int widthSpec, int heightSpec) {
-        if (!keyboard) measureChildWithMargins(navigation, widthSpec, 0, heightSpec, 0);
+        padScrollingContent(content, 0);
+        if (!keyboard && !scrollHidden) measureChildWithMargins(navigation, widthSpec, 0, heightSpec, 0);
         LayoutParams params = (LayoutParams) content.getLayoutParams();
-        int clearance = keyboard ? 0 : navigation.getMeasuredHeight();
+        int clearance = keyboard || scrollHidden ? 0 : navigation.getMeasuredHeight();
         if (params.bottomMargin != clearance) {
             params.bottomMargin = clearance;
             content.setLayoutParams(params);
@@ -95,12 +97,27 @@ final class MobileNavigationShell extends FrameLayout {
 
     void setKeyboardVisible(boolean visible) {
         keyboard = visible;
-        navigation.setVisibility(visible ? GONE : VISIBLE);
+        navigation.setVisibility(visible || scrollHidden ? GONE : VISIBLE);
+        updateClearance();
+    }
+
+    void revealNavigation() {
+        scrollHidden = false;
+        navigation.setVisibility(keyboard ? GONE : VISIBLE);
+        updateClearance();
+    }
+
+    void onUserScroll(int dy) {
+        if (dy == 0 || keyboard) return;
+        boolean hide = dy > 0;
+        if (scrollHidden == hide) return;
+        scrollHidden = hide;
+        navigation.setVisibility(hide ? GONE : VISIBLE);
         updateClearance();
     }
 
     private void updateClearance() {
-        int clearance = keyboard ? 0 : navigation.getHeight();
+        int clearance = keyboard || scrollHidden ? 0 : navigation.getHeight();
         LayoutParams params = (LayoutParams) content.getLayoutParams();
         if (params.bottomMargin != clearance) {
             params.bottomMargin = clearance;
@@ -112,6 +129,37 @@ final class MobileNavigationShell extends FrameLayout {
 
     private boolean padScrollingContent(View view, int clearance) {
         if (view instanceof ScrollView || view instanceof androidx.recyclerview.widget.RecyclerView) {
+            if (observedScrollers.add(view)) {
+                if (view instanceof androidx.recyclerview.widget.RecyclerView) {
+                    ((androidx.recyclerview.widget.RecyclerView) view).addOnScrollListener(
+                        new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+                            @Override public void onScrolled(@NonNull androidx.recyclerview.widget.RecyclerView list, int dx, int dy) {
+                                if (list.getScrollState() != androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_IDLE)
+                                    onUserScroll(dy);
+                            }
+                        });
+                } else {
+                    final boolean[] userScroll = {false};
+                    final Runnable idle = () -> userScroll[0] = false;
+                    view.setOnTouchListener((v, event) -> {
+                        if (event.getActionMasked() == android.view.MotionEvent.ACTION_DOWN
+                                || event.getActionMasked() == android.view.MotionEvent.ACTION_MOVE) {
+                            v.removeCallbacks(idle);
+                            userScroll[0] = true;
+                        } else if (event.getActionMasked() == android.view.MotionEvent.ACTION_UP
+                                || event.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL) {
+                            v.postDelayed(idle, 250);
+                        }
+                        return false;
+                    });
+                    view.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
+                        if (!userScroll[0]) return;
+                        onUserScroll(y - oldY);
+                        v.removeCallbacks(idle);
+                        v.postDelayed(idle, 250);
+                    });
+                }
+            }
             if (!scrollPadding.containsKey(view)) scrollPadding.put(view, view.getPaddingBottom());
             view.setPadding(view.getPaddingLeft(), view.getPaddingTop(), view.getPaddingRight(),
                     scrollPadding.get(view) + clearance);
@@ -130,7 +178,7 @@ final class MobileNavigationShell extends FrameLayout {
     static LinearLayout destinations(MobileActivity activity) {
         LinearLayout row = new LinearLayout(activity);
         addDestination(row, activity, R.drawable.icon_home, R.string.header_home, MediaGroup.TYPE_HOME);
-        addDestination(row, activity, R.drawable.icon_subscriptions, R.string.header_subscriptions, MediaGroup.TYPE_SUBSCRIPTIONS);
+        addDestination(row, activity, R.drawable.mobile_history, R.string.header_history, MediaGroup.TYPE_HISTORY);
         addDestination(row, activity, R.drawable.ic_user, R.string.mobile_you, YOU);
         return row;
     }

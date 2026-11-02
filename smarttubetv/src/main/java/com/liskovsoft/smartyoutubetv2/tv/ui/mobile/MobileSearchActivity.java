@@ -55,11 +55,18 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
                         getString(R.string.settings_search),
                         presenter::onSearchSettingsClicked));
         root.addView(filters);
-        HorizontalScrollView strip = new HorizontalScrollView(this);
-        strip.setHorizontalScrollBarEnabled(false);
+        ScrollView strip = new ScrollView(this);
         tags = new LinearLayout(this);
+        tags.setOrientation(LinearLayout.VERTICAL);
         strip.addView(tags);
-        root.addView(strip);
+        root.addView(strip, new LinearLayout.LayoutParams(-1, 0));
+        strip.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            int desired = Math.min(tags.getHeight(), Math.max(MobileUi.dp(this, 48), root.getHeight() / 2));
+            if (strip.getLayoutParams().height != desired) {
+                strip.getLayoutParams().height = desired;
+                strip.requestLayout();
+            }
+        });
         feed =
                 new MobileFeedView(
                         this,
@@ -125,9 +132,9 @@ public class MobileSearchActivity extends MobileActivity implements SearchView {
                                     if (results != null)
                                         for (Tag tag : results) {
                                             Button button =
-                                                    MobileUi.browseButton(
+                                                    MobileUi.menuRow(
                                                             this,
-                                                            tag.tag,
+                                                            tag.tag, R.drawable.action_search,
                                                             () -> {
                                                                 query.setText(tag.tag);
                                                                 submit();

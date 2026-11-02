@@ -7,14 +7,21 @@
     <color name="mobile_navigation_bottom">#303030</color>
     <color name="mobile_text_secondary">#AAAAAA</color>
     <color name="mobile_feedback">#33FFFFFF</color>
-    <dimen name="mobile_space">12dp</dimen>
+    <dimen name="mobile_space">8dp</dimen>
     <dimen name="mobile_page_padding">16dp</dimen>
     <dimen name="mobile_corner">12dp</dimen>
-    <dimen name="mobile_title_size">18sp</dimen>
+    <dimen name="mobile_title_size">16sp</dimen>
     <dimen name="mobile_meta_size">13sp</dimen>
     <string name="mobile_clear_search">Clear search</string>
     <string name="mobile_voice_search">Voice search</string>
     <string name="mobile_back">Back</string>
     <string name="mobile_search_empty">No results found. Try another search.</string>
     <string name="mobile_loading">Loading videos</string>
+<item name="mobile_navigation_icon" type="id"/>
+<color name="mobile_text_primary">#F1F1F1</color><color name="mobile_text_inverse">#0F0F0F</color>
+<color name="mobile_surface_raised">#272727</color><color name="mobile_badge_background">#CC000000</color>
+<dimen name="mobile_watch_title_size">18sp</dimen><dimen name="mobile_heading_size">24sp</dimen><dimen name="mobile_label_size">14sp</dimen>
+<dimen name="mobile_icon_size">24dp</dimen><dimen name="mobile_touch_target">48dp</dimen>
+<integer name="mobile_motion_enter">200</integer><integer name="mobile_motion_controls">180</integer><string name="mobile_subscriptions_empty">Videos from channels you subscribe to will appear here.</string>
+<string name="mobile_home_empty">No recommendations yet. Search for a video to start watching.</string>
 </resources>

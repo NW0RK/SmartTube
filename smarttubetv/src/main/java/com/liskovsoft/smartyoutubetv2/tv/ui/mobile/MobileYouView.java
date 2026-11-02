@@ -64,10 +64,7 @@ final class MobileYouView extends LinearLayout {
                 shortcut.setMinimumHeight(MobileUi.dp(context, 48));
                 shortcut.setPaddingRelative(MobileUi.dp(context, 12), MobileUi.dp(context, 10), MobileUi.dp(context, 12), MobileUi.dp(context, 10));
                 shortcut.setCompoundDrawablePadding(MobileUi.dp(context, 8));
-                shortcut.setBackground(new android.graphics.drawable.RippleDrawable(
-                        android.content.res.ColorStateList.valueOf(context.getColor(R.color.mobile_feedback)),
-                        MobileUi.rounded(context, context.getColor(R.color.mobile_surface)),
-                        MobileUi.rounded(context, android.graphics.Color.WHITE)));
+                MobileUi.browseFeedback(shortcut, false);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-2, -2);
                 params.setMargins(MobileUi.dp(context, 4), MobileUi.dp(context, 4), MobileUi.dp(context, 4), MobileUi.dp(context, 4));
                 shortcuts.addView(shortcut, params);

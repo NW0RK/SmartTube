@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 2,
+  "title": "Design System: NikoTube",
+  "extensions": {
+    "motion": [
+      {
+        "name": "enter",
+        "value": "200ms cubic-bezier(0.2,0,0,1)",
+        "purpose": "Interruptible entry, respects system animator scale"
+      },
+      {
+        "name": "controls",
+        "value": "180ms cubic-bezier(0.2,0,0,1)",
+        "purpose": "Player controls"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tablet",
+        "value": "600dp",
+        "purpose": "Existing two-column feed; full-span headings retained"
+      }
+    ]
+  },
+  "narrative": {
+    "northStar": "Content first, NikoTube identity",
+    "overview": "YouTube-first, dark-only, phones first. Preserve native Android behavior and current tablet structure.",
+    "navigation": "Home, History, You; hide on user scrolling down, reveal up or on destination change. Preserve restoration and keyboard clearance.",
+    "feedback": "Whole-shape pressed/focused/hovered fills preserve each control corner radius. No circular waves on text actions."
+  },
+  "generatedAt": "2026-11-02T09:19:44.754Z"
+}

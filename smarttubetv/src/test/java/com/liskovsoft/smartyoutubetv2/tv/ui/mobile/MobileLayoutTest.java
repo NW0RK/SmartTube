@@ -76,7 +76,7 @@ public class MobileLayoutTest {
                 View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.AT_MOST));
         toolbar.layout(0, 0, 320, toolbar.getMeasuredHeight());
         assertTrue(toolbar.getChildAt(0).getHeight() >= MobileUi.dp(c, 48));
-        android.widget.TextView title = (android.widget.TextView) toolbar.getChildAt(2);
+        android.widget.TextView title = toolbar.findViewById(R.id.mobile_toolbar_title);
         assertTrue(title.getTextSize() >= 40);
         assertTrue(
                 title.getHeight()

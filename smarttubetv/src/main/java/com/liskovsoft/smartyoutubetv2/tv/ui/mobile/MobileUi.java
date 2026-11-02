@@ -6,7 +6,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.widget.*;
 import android.content.res.ColorStateList;
-import android.graphics.drawable.RippleDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.view.View;
 import com.liskovsoft.smartyoutubetv2.tv.R;
@@ -20,32 +19,50 @@ final class MobileUi {
     }
 
     static GradientDrawable pillSurface(Context c) {
-        GradientDrawable surface = rounded(c, c.getColor(R.color.mobile_surface));
+        GradientDrawable surface = rounded(c, c.getColor(R.color.mobile_surface_raised));
         surface.setCornerRadius(dp(c, 12));
         return surface;
     }
 
+    private static GradientDrawable feedbackShape(Context c, int color, int radius) {
+        GradientDrawable shape = rounded(c, color);
+        shape.setCornerRadius(dp(c, radius));
+        return shape;
+    }
+
+    private static int pressedColor(Context c, int base) {
+        int overlay = androidx.core.graphics.ColorUtils.calculateLuminance(base) > 0.7
+                ? 0x26000000 : c.getColor(R.color.mobile_feedback);
+        return androidx.core.graphics.ColorUtils.compositeColors(overlay, base);
+    }
+
+    // Whole-shape feedback: no expanding circular wave on rectangular or pill buttons.
+    private static StateListDrawable shapeStates(Context c, int normal, int selected,
+            boolean selectable, int radius) {
+        StateListDrawable states = new StateListDrawable();
+        for (int state : new int[]{android.R.attr.state_pressed, android.R.attr.state_focused,
+                android.R.attr.state_hovered}) {
+            if (selectable) states.addState(new int[]{android.R.attr.state_selected, state},
+                    feedbackShape(c, pressedColor(c, selected), radius));
+            states.addState(new int[]{state}, feedbackShape(c, pressedColor(c, normal), radius));
+        }
+        if (selectable) states.addState(new int[]{android.R.attr.state_selected},
+                feedbackShape(c, selected, radius));
+        states.addState(new int[]{}, feedbackShape(c, normal, radius));
+        return states;
+    }
+
     static void browseFeedback(View view, boolean selectable) {
         Context c = view.getContext();
-        StateListDrawable states = new StateListDrawable();
-        if (selectable) {
-            GradientDrawable selected = pillSurface(c);
-            selected.setColor(Color.rgb(241, 241, 241));
-            states.addState(new int[]{android.R.attr.state_selected}, selected);
-        }
-        states.addState(new int[]{}, pillSurface(c));
-        GradientDrawable mask = rounded(c, Color.WHITE);
-        mask.setCornerRadius(dp(c, 28));
-        view.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                states, mask));
+        view.setBackground(shapeStates(c, c.getColor(R.color.mobile_surface_raised),
+                c.getColor(R.color.mobile_text_primary), selectable, 12));
     }
 
     static void pillTouchFeedback(View view) {
         Context c = view.getContext();
-        GradientDrawable mask = rounded(c, Color.WHITE);
-        mask.setCornerRadius(dp(c, 28));
-        view.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                rounded(c, Color.TRANSPARENT), mask));
+        boolean icon = view instanceof ImageButton
+                || view instanceof Button && ((Button) view).getText().length() == 0;
+        view.setBackground(shapeStates(c, Color.TRANSPARENT, Color.TRANSPARENT, false, icon ? 28 : 12));
     }
 
     static Button browseButton(Context c, CharSequence title, Runnable action) {
@@ -59,6 +76,17 @@ final class MobileUi {
 
     static void navigationState(Button button, boolean selected) {
         button.setSelected(selected);
+        if (!Boolean.TRUE.equals(button.getTag(R.id.mobile_navigation_avatar))) {
+            Object normal = button.getTag(R.id.mobile_navigation_icon);
+            if (normal instanceof Integer) {
+                int icon = (Integer) normal;
+                if (selected && icon == R.drawable.mobile_home) icon = R.drawable.mobile_home_active;
+                else if (selected && icon == R.drawable.mobile_subscriptions) icon = R.drawable.mobile_subscriptions_active;
+                else if (selected && icon == R.drawable.mobile_history) icon = R.drawable.mobile_history_active;
+                else if (selected && icon == R.drawable.mobile_account) icon = R.drawable.mobile_account_active;
+                navigationIcon(button, button.getContext().getDrawable(icon).mutate());
+            }
+        }
         int color = selected ? Color.WHITE : button.getContext().getColor(R.color.mobile_text_secondary);
         button.setTextColor(color);
         if (button.getForeground() != null && !Boolean.TRUE.equals(button.getTag(R.id.mobile_navigation_avatar)))
@@ -69,7 +97,7 @@ final class MobileUi {
 
     static ImageButton browseIcon(Context c, int icon, String label, Runnable action) {
         ImageButton b = iconButton(c, icon, label, action);
-        browseFeedback(b, false);
+        pillTouchFeedback(b);
         b.setMinimumWidth(dp(c, 48));
         b.setMinimumHeight(dp(c, 48));
         return b;
@@ -81,7 +109,6 @@ final class MobileUi {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.addView(browseIcon(c, R.drawable.mobile_back, c.getString(R.string.mobile_back), back),
                 new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
-        addSeparator(bar);
         LinearLayout field = new LinearLayout(c);
         field.setGravity(Gravity.CENTER_VERTICAL);
         field.setBackground(pillSurface(c));
@@ -95,7 +122,6 @@ final class MobileUi {
         field.addView(query, new LinearLayout.LayoutParams(0, -2, 1));
         field.addView(clear, new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
         bar.addView(field, new LinearLayout.LayoutParams(0, -2, 1));
-        addSeparator(bar);
         bar.addView(browseIcon(c, R.drawable.mobile_mic, c.getString(R.string.mobile_voice_search), voice),
                 new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
         bar.setPadding(0, dp(c, 8), 0, dp(c, 8));
@@ -123,7 +149,7 @@ final class MobileUi {
     static TextView text(Context c, CharSequence text, int size) {
         TextView v = new TextView(c);
         v.setText(text);
-        v.setTextColor(Color.WHITE);
+        v.setTextColor(c.getColor(R.color.mobile_text_primary));
         v.setTextSize(size);
         v.setPadding(dp(c, 16), dp(c, 10), dp(c, 16), dp(c, 10));
         return v;
@@ -139,16 +165,14 @@ final class MobileUi {
         else if ("▶|".equals(glyph)) b.setContentDescription("Next video");
         else if ("🎙".equals(glyph)) b.setContentDescription("Voice search");
         b.setAllCaps(false);
-        b.setTextColor(Color.WHITE);
-        b.setTextSize(14);
+        b.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
+                new int[]{c.getColor(R.color.mobile_text_secondary), c.getColor(R.color.mobile_text_primary)}));
+        b.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, c.getResources().getDimension(R.dimen.mobile_label_size));
         b.setGravity(Gravity.CENTER);
         b.setIncludeFontPadding(false);
         b.setMinHeight(dp(c, 48));
         b.setMinWidth(dp(c, 48));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(c.getColor(R.color.mobile_surface));
-        bg.setCornerRadius(dp(c, 28));
-        b.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)), bg, null));
+        b.setBackground(shapeStates(c, c.getColor(R.color.mobile_surface), 0, false, 28));
         b.setPadding(dp(c, 16), dp(c, 8), dp(c, 16), dp(c, 8));
         b.setOnClickListener(v -> action.run());
         return b;
@@ -164,6 +188,7 @@ final class MobileUi {
         button.setBackgroundColor(Color.TRANSPARENT);
         button.setPadding(dp(c, 12), dp(c, 12), dp(c, 12), dp(c, 12));
         button.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        pillTouchFeedback(button);
         button.setOnClickListener(v -> action.run());
         return button;
     }
@@ -173,6 +198,7 @@ final class MobileUi {
         else if (icon == R.drawable.icon_subscriptions) icon = R.drawable.mobile_subscriptions;
         else if (icon == R.drawable.ic_user) icon = R.drawable.mobile_account;
         Button button = button(c, label, action);
+        button.setTag(R.id.mobile_navigation_icon, icon);
         button.setBackgroundColor(Color.TRANSPARENT);
         button.setPadding(0, dp(c, 4), 0, dp(c, 4));
         button.setTextSize(11);
@@ -202,33 +228,21 @@ final class MobileUi {
 
     static void playerFeedback(Button button) {
         Context c = button.getContext();
-        StateListDrawable states = new StateListDrawable();
-        GradientDrawable selected = rounded(c, c.getColor(R.color.mobile_surface));
-        selected.setCornerRadius(dp(c, 28));
-        selected.setStroke(dp(c, 1), accent(c));
-        states.addState(new int[]{android.R.attr.state_selected}, selected);
-        GradientDrawable normal = rounded(c, c.getColor(R.color.mobile_surface));
-        normal.setCornerRadius(dp(c, 28));
-        states.addState(new int[]{}, normal);
-        GradientDrawable mask = rounded(c, Color.WHITE);
-        mask.setCornerRadius(dp(c, 28));
         button.setBackgroundTintList(null);
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(
-                Color.argb(65, Color.red(accent(c)), Color.green(accent(c)), Color.blue(accent(c)))),
-                states, mask));
+        button.setBackground(shapeStates(c, c.getColor(R.color.mobile_surface),
+                c.getColor(R.color.mobile_surface_raised), true, 28));
         button.setStateListAnimator(null);
         button.setElevation(0);
     }
 
     static void subscriptionFeedback(Button button) {
         Context c = button.getContext();
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_selected}, rounded(c, c.getColor(R.color.mobile_surface)));
-        states.addState(new int[]{}, rounded(c, accent(c)));
         button.setBackgroundTintList(null);
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                states, rounded(c, Color.WHITE)));
+        button.setBackground(shapeStates(c, c.getColor(R.color.mobile_text_primary),
+                c.getColor(R.color.mobile_surface), true, 12));
         button.setElevation(0);
+        button.setTextColor(new ColorStateList(new int[][]{new int[]{android.R.attr.state_selected}, new int[]{}},
+            new int[]{c.getColor(R.color.mobile_text_primary), c.getColor(R.color.mobile_text_inverse)}));
     }
 
     static LinearLayout toolbar(Context c, CharSequence title, Runnable back) {
@@ -239,11 +253,10 @@ final class MobileUi {
         if (back != null) {
             row.addView(iconButton(c, R.drawable.mobile_back, c.getString(R.string.mobile_back), back),
                     new LinearLayout.LayoutParams(dp(c, 48), dp(c, 48)));
-            addSeparator(row);
         }
         TextView name = text(c, title, 20);
         name.setId(R.id.mobile_toolbar_title);
-        name.setMinHeight(dp(c, 56));
+        name.setMinHeight(dp(c, 48));
         name.setGravity(Gravity.CENTER_VERTICAL);
         name.setTypeface(null, android.graphics.Typeface.BOLD);
         name.setMaxLines(2);
@@ -267,6 +280,12 @@ final class MobileUi {
         brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         row.addView(brand, 0, new LinearLayout.LayoutParams(dp(c, 40), dp(c, 32)));
         return row;
+    }
+
+    static void moreIcon(Button button) {
+        button.setContentDescription(button.getContext().getString(R.string.mobile_more));
+        centerIcon(button, "more", 24);
+        pillTouchFeedback(button);
     }
 
     static void addButton(LinearLayout row, Button button) {
@@ -294,15 +313,7 @@ final class MobileUi {
         button.setMinHeight(dp(c, 48));
         button.setMinimumHeight(dp(c, 48));
         button.setCompoundDrawablePadding(dp(c, 4));
-        StateListDrawable states = new StateListDrawable();
-        GradientDrawable selected = rounded(c, 0x22ffffff);
-        selected.setCornerRadius(dp(c, 32));
-        states.addState(new int[]{android.R.attr.state_selected}, selected);
-        states.addState(new int[]{}, rounded(c, Color.TRANSPARENT));
-        GradientDrawable mask = rounded(c, Color.WHITE);
-        mask.setCornerRadius(dp(c, 32));
-        button.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                states, mask));
+        button.setBackground(shapeStates(c, Color.TRANSPARENT, Color.TRANSPARENT, false, 12));
         return button;
     }
 
@@ -319,10 +330,9 @@ final class MobileUi {
         Context c = row.getContext();
         View divider = new View(c);
         divider.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        divider.setBackgroundColor(c.getColor(R.color.mobile_divider));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(c, 1), dp(c, 24));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(c, 8), dp(c, 24));
         params.gravity = Gravity.CENTER_VERTICAL;
-        params.setMargins(dp(c, 6), 0, dp(c, 6), 0);
+
         row.addView(divider, params);
     }
 
@@ -337,9 +347,7 @@ final class MobileUi {
         control.setMinHeight(dp(c, 56));
         control.setMinimumHeight(dp(c, 56));
         control.setPaddingRelative(dp(c, 16), dp(c, 16), dp(c, 16), dp(c, 16));
-        control.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT),
-                new android.graphics.drawable.ColorDrawable(Color.WHITE)));
+        control.setBackground(shapeStates(c, Color.TRANSPARENT, 0, false, 0));
         if (control instanceof CompoundButton) {
             ColorStateList tint = new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
@@ -386,8 +394,7 @@ final class MobileUi {
         control.setGravity(Gravity.CENTER_VERTICAL);
         control.setMinHeight(dp(c, 56));
         control.setPaddingRelative(dp(c, 16), dp(c, 14), dp(c, 16), dp(c, 14));
-        control.setBackground(new RippleDrawable(ColorStateList.valueOf(c.getColor(R.color.mobile_feedback)),
-                pillSurface(c), null));
+        control.setBackground(shapeStates(c, c.getColor(R.color.mobile_surface_raised), 0, false, 12));
         if (control instanceof CompoundButton)
             ((CompoundButton) control).setButtonTintList(new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},

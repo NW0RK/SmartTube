@@ -13,6 +13,7 @@ public final class MobileFeedView extends LinearLayout {
     public final RecyclerView list;
     public final MobileFeedAdapter adapter;
     private final ProgressBar progress;
+    private final LinearLayout skeleton;
     private final TextView message;
     private final Button retry;
     private Runnable retryAction;
@@ -33,6 +34,21 @@ public final class MobileFeedView extends LinearLayout {
         status.setPadding(padding, padding, padding, padding);
         progress = new ProgressBar(c);
         progress.setContentDescription(c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_loading));
+        skeleton = MobileUi.column(c);
+        skeleton.setContentDescription(c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_loading));
+        skeleton.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
+        for (int i = 0; i < 2; i++) {
+            android.view.View image = new android.view.View(c);
+            image.setBackground(MobileUi.rounded(c, c.getColor(com.liskovsoft.smartyoutubetv2.tv.R.color.mobile_surface)));
+            skeleton.addView(image, new LayoutParams(-1, MobileUi.dp(c, 160)));
+            android.view.View line = new android.view.View(c);
+            line.setBackground(MobileUi.rounded(c, c.getColor(com.liskovsoft.smartyoutubetv2.tv.R.color.mobile_surface)));
+            LayoutParams lineParams = new LayoutParams(-1, MobileUi.dp(c, 16));
+            lineParams.setMargins(0, MobileUi.dp(c, 12), 0, MobileUi.dp(c, 24));
+            lineParams.setMarginEnd(MobileUi.dp(c, 48));
+            skeleton.addView(line, lineParams);
+        }
+        skeleton.setVisibility(GONE);
         status.addView(progress, new LayoutParams(MobileUi.dp(c, 48), MobileUi.dp(c, 48)));
         progress.setVisibility(GONE);
         message =
@@ -49,6 +65,7 @@ public final class MobileFeedView extends LinearLayout {
                         c.getString(com.liskovsoft.smartyoutubetv2.tv.R.string.mobile_retry),
                         () -> {});
         status.addView(retry);
+        status.addView(skeleton, new LayoutParams(-1, -2));
         retry.setVisibility(GONE);
         list = new RecyclerView(c);
         adapter = new MobileFeedAdapter(click, menu, more);
@@ -156,7 +173,8 @@ public final class MobileFeedView extends LinearLayout {
         list.setVisibility(hasRows ? VISIBLE : GONE);
         status.setVisibility(visible ? VISIBLE : GONE);
         status.setLayoutParams(new LayoutParams(-1, hasRows ? -2 : 0, hasRows ? 0 : 1));
-        progress.setVisibility(busy ? VISIBLE : GONE);
+        skeleton.setVisibility(busy && !hasRows ? VISIBLE : GONE);
+        progress.setVisibility(busy && hasRows ? VISIBLE : GONE);
         message.setVisibility(!busy && (failed || empty && completed) ? VISIBLE : GONE);
         if (!failed) message.setText(emptyText);
         if (!failed) retry.setVisibility(GONE);

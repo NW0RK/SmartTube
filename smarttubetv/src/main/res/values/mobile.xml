@@ -12,6 +12,8 @@
     <item name="mobile_watch_container" type="id"/>
     <style name="MobileTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
+<item name="android:textColorPrimary">@color/mobile_text_primary</item><item name="android:textColorSecondary">@color/mobile_text_secondary</item>
+<item name="android:colorBackground">@color/mobile_background</item><item name="android:alertDialogTheme">@style/MobileAlertDialogTheme</item>
         <item name="android:colorAccent">@color/mobile_accent</item>
         <item name="android:windowBackground">@color/mobile_background</item>
         <item name="android:windowActionModeOverlay">true</item>
@@ -29,4 +31,7 @@
     <string name="mobile_fullscreen">Fullscreen</string>
     <string name="mobile_exit_fullscreen">Exit fullscreen</string>
     <string name="mobile_play_pause">Play or pause</string>
-</resources>
+<style name="MobileAlertDialogTheme" parent="android:style/Theme.Material.Dialog.Alert">
+<item name="android:colorAccent">@color/mobile_text_primary</item><item name="android:colorBackground">@color/mobile_surface</item>
+<item name="android:textColorPrimary">@color/mobile_text_primary</item><item name="android:textColorSecondary">@color/mobile_text_secondary</item>
+</style></resources>

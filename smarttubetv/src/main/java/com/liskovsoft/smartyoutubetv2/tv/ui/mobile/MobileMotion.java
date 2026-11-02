@@ -23,7 +23,7 @@ final class MobileMotion {
             view.setTranslationY(MobileUi.dp(view.getContext(), 8));
         }
         view.setTag(R.id.mobile_enter_animating, true);
-        view.animate().alpha(1f).translationY(0f).setDuration(280)
+        view.animate().alpha(1f).translationY(0f).setDuration(view.getResources().getInteger(R.integer.mobile_motion_enter))
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .withEndAction(() -> view.setTag(R.id.mobile_enter_animating, false)).start();
     }
@@ -40,7 +40,7 @@ final class MobileMotion {
             view.setAlpha(0f);
             view.setVisibility(View.VISIBLE);
         }
-        view.animate().alpha(show ? 1f : 0f).setDuration(180)
+        view.animate().alpha(show ? 1f : 0f).setDuration(view.getResources().getInteger(R.integer.mobile_motion_controls))
                 .setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f))
                 .withEndAction(() -> {
                     if (!show) view.setVisibility(View.GONE);
